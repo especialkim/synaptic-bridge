@@ -14,3 +14,49 @@ If your plugin does not need CSS, delete this file.
 .markdown-hijacker-container {
   /* Plugin specific styles will go here */
 }
+
+/* 매핑 리스트 컨테이너 */
+.mapping-list-container {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  padding: 10px;
+  margin-bottom: 15px;
+  background-color: var(--background-secondary);
+}
+
+/* 매핑 아이템 */
+.mapping-item {
+  margin-bottom: 15px;
+  padding: 10px;
+  border-radius: 4px;
+  background-color: var(--background-primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.mapping-item h4 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding-bottom: 5px;
+}
+
+/* 설정 경고 메시지 */
+.setting-warning {
+  color: var(--text-error);
+  font-size: 12px;
+  margin: 5px 0 15px;
+  padding: 8px;
+  border-radius: 4px;
+  opacity: 0.8;
+}
+
+/* 버튼 스타일 */
+.mod-warning {
+  background-color: var(--background-modifier-error) !important;
+  color: var(--text-on-accent) !important;
+}
+
+/* 폴더 매핑 구분선 */
+.mapping-item hr {
+  margin: 10px 0;
+}
