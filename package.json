@@ -1,15 +1,15 @@
 {
-	"name": "obsidian-sample-plugin",
-	"version": "1.0.0",
-	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
+	"name": "markdown-hijacker",
+	"version": "0.1.0",
+	"description": "Hijack your markdowns from external folders. Live sync with Obsidian Vault—on your terms.",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
 		"version": "node version-bump.mjs && git add manifest.json versions.json"
 	},
-	"keywords": [],
-	"author": "",
+	"keywords": ["obsidian", "markdown", "plugin", "sync", "hijack"],
+	"author": "Yongmin Kim",
 	"license": "MIT",
 	"devDependencies": {
 		"@types/node": "^16.11.6",

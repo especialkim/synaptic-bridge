@@ -6,3 +6,11 @@ available in the app when your plugin is enabled.
 If your plugin does not need CSS, delete this file.
 
 */
+
+/*
+ * MarkdownHijacker Plugin CSS
+ */
+
+.markdown-hijacker-container {
+  /* Plugin specific styles will go here */
+}
