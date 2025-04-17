@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { FSWatcher } from 'fs';
 import { FolderMapping } from '../../settings';
-import { addOriginPathFrontMatter } from '../../src/utils/frontmatter-utils';
+import { addOriginPathFrontMatter } from '../utils/frontmatter-utils';
 
 // 파일 시스템 변화를 더 안정적으로 감지하기 위해 chokidar 사용 시도
 // 직접 코드에 넣되, chokidar가 없으면 fs.watch로 폴백
@@ -17,11 +17,15 @@ try {
     chokidar = null;
 }
 
+// SyncHandler 타입 정의
+export type SyncHandler = (eventType: string, filename: string, fullPath: string) => void;
+
 export class ExternalFolderWatcher {
     private app: App;
     private watchers: Map<string, FSWatcher | any> = new Map();
     private debugMode: boolean;
     private showNotifications: boolean;
+    private syncHandlers: Map<string, SyncHandler> = new Map();
 
     constructor(app: App, debugMode: boolean = false) {
         this.app = app;
@@ -80,19 +84,22 @@ export class ExternalFolderWatcher {
                 // chokidar 이벤트 리스너 등록
                 watcher.on('add', (path: string) => {
                     console.log(`[External Watcher] 파일 추가됨: ${path}`);
-                    const filename = path.replace(mapping.externalPath + '/', '');
+                    const filename = path.replace(mapping.externalPath + '/', '').replace(mapping.externalPath + '\\', '');
+                    console.log(`[External Watcher] 추출된 파일명: ${filename}, 매핑 ID: ${mapping.id}`);
                     changeHandler('add', filename);
                 });
                 
                 watcher.on('change', (path: string) => {
                     console.log(`[External Watcher] 파일 변경됨: ${path}`);
-                    const filename = path.replace(mapping.externalPath + '/', '');
+                    const filename = path.replace(mapping.externalPath + '/', '').replace(mapping.externalPath + '\\', '');
+                    console.log(`[External Watcher] 추출된 파일명: ${filename}, 매핑 ID: ${mapping.id}`);
                     changeHandler('change', filename);
                 });
                 
                 watcher.on('unlink', (path: string) => {
                     console.log(`[External Watcher] 파일 삭제됨: ${path}`);
-                    const filename = path.replace(mapping.externalPath + '/', '');
+                    const filename = path.replace(mapping.externalPath + '/', '').replace(mapping.externalPath + '\\', '');
+                    console.log(`[External Watcher] 추출된 파일명: ${filename}, 매핑 ID: ${mapping.id}`);
                     changeHandler('unlink', filename);
                 });
                 
@@ -128,8 +135,21 @@ export class ExternalFolderWatcher {
                     mapping.externalPath, 
                     { recursive: true },
                     (eventType, filename) => {
-                        console.log(`[External Watcher] fs.watch 이벤트 발생: ${eventType}, ${filename}`);
-                        changeHandler(eventType, filename);
+                        console.log(`[External Watcher] fs.watch 이벤트 발생: ${eventType}, ${filename}, 매핑 ID: ${mapping.id}`);
+                        if (filename) {
+                            // fs.watch 이벤트 표준화 - 파일 존재 확인 후 이벤트 타입 결정
+                            const fullPath = path.join(mapping.externalPath, filename);
+                            const exists = fs.existsSync(fullPath);
+                            
+                            // 실제 이벤트 타입 결정 (문자열로 처리)
+                            let actualEventType: string = eventType;
+                            if (eventType === 'rename') {
+                                actualEventType = exists ? 'add' : 'unlink';
+                            }
+                            
+                            console.log(`[External Watcher] 표준화된 이벤트: ${actualEventType} (원본: ${eventType}), 파일: ${filename}`);
+                            changeHandler(actualEventType, filename);
+                        }
                     }
                 );
             }
@@ -173,6 +193,19 @@ export class ExternalFolderWatcher {
         this.log('All watchers removed');
     }
     
+    /**
+     * 동기화 핸들러 등록
+     * @param mapping 폴더 매핑 정보
+     * @param handler 핸들러 함수
+     */
+    public registerSyncHandler(mapping: FolderMapping, handler: SyncHandler): void {
+        console.log(`[External Watcher] 💡 동기화 핸들러 등록: 매핑 ID=${mapping.id}, 경로=${mapping.externalPath}`);
+        this.syncHandlers.set(mapping.id, handler);
+        // 핸들러 등록 확인 (디버깅용)
+        const registeredHandler = this.syncHandlers.get(mapping.id);
+        console.log(`[External Watcher] 💡 동기화 핸들러 등록 확인: ${registeredHandler ? '성공' : '실패'}`);
+    }
+
     /**
      * Handle changes in external folders
      */
@@ -282,6 +315,36 @@ export class ExternalFolderWatcher {
         
         // Log the change
         this.log(`External change detected - Type: ${eventType}, File: ${filename}, Action: ${actionType}`);
+
+        // 핸들러 맵 디버그 로깅 (항상 출력)
+        console.log(`[External Watcher] 🔍 디버그 - 매핑 ID: ${mapping.id}`);
+        console.log(`[External Watcher] 🔍 디버그 - 등록된 핸들러 키: ${Array.from(this.syncHandlers.keys()).join(', ')}`);
+        console.log(`[External Watcher] 🔍 디버그 - 핸들러 등록 여부: ${this.syncHandlers.has(mapping.id) ? '있음' : '없음'}`);
+        console.log(`[External Watcher] 🔍 디버그 - 등록된 핸들러 수: ${this.syncHandlers.size}`);
+
+        // 동기화 핸들러 호출
+        try {
+            console.log(`[External Watcher] 🔄 동기화 핸들러 호출 시작 (${mapping.id}): ${eventType}, ${filename}, ${fullPath}`);
+            const syncHandler = this.syncHandlers.get(mapping.id);
+            
+            if (syncHandler) {
+                console.log(`[External Watcher] 📣 동기화 핸들러 발견, 호출 중... ID: ${mapping.id}`);
+                console.log(`[External Watcher] 📊 동기화 핸들러 수: ${this.syncHandlers.size}, 매핑 경로: ${mapping.externalPath}`);
+                
+                // 직접 핸들러 호출 (비동기 지연 제거)
+                syncHandler(eventType, filename, fullPath);
+                console.log(`[External Watcher] ✅ 동기화 핸들러 호출 완료`);
+            } else {
+                console.log(`[External Watcher] ⚠️ 동기화 핸들러가 등록되지 않음: ${mapping.id}`);
+                console.log(`[External Watcher] 📊 등록된 핸들러 정보: 수=${this.syncHandlers.size}, 키=${Array.from(this.syncHandlers.keys()).join(', ')}`);
+            }
+        } catch (error) {
+            console.error(`[External Watcher] ❌ 동기화 핸들러 호출 오류:`, error);
+            if (error instanceof Error) {
+                console.error(`[External Watcher] 오류 내용: ${error.message}`);
+                console.error(`[External Watcher] 오류 스택: ${error.stack}`);
+            }
+        }
     }
     
     /**

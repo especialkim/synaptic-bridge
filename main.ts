@@ -9,6 +9,8 @@ import {
 } from './settings';
 import { ExternalFolderWatcher } from './src/watchers/external-watcher';
 import * as path from 'path';
+import { ExternalSync } from './src/sync/external-sync';
+import { VaultSync } from './src/sync/vault-sync';
 
 // 이벤트 타입 확장
 declare module 'obsidian' {
@@ -29,7 +31,7 @@ declare module './settings' {
 
 // Add default values for our new settings
 const ADDITIONAL_DEFAULT_SETTINGS = {
-	enableExternalSync: false,
+	enableExternalSync: true,
 	showNotifications: true
 };
 
@@ -46,16 +48,26 @@ export default class MarkdownHijacker extends Plugin {
 	monitoringExternalChanges: boolean = false;
 	watchers: Map<string, fs.FSWatcher> = new Map();
 	externalWatcher: ExternalFolderWatcher;
+	private vaultSync: VaultSync;
+	private externalSync: ExternalSync;
 
 	async onload() {
 		console.log('MarkdownHijacker plugin loaded');
 		
 		// 설정 로드
 		await this.loadSettings();
+		console.log(`[Markdown Hijacker] 플러그인 설정 로드됨 - 동기화 활성화: ${this.settings.enableExternalSync ? '예' : '아니오'}, 플러그인 활성화: ${this.settings.pluginEnabled ? '예' : '아니오'}`);
 		
 		// 외부 폴더 감시자 초기화 (먼저 초기화해야 함)
-		console.log('외부 폴더 감시자 초기화 중...');
+		console.log('[Markdown Hijacker] 외부 폴더 감시자 초기화 중...');
 		this.externalWatcher = new ExternalFolderWatcher(this.app, this.settings.debugMode);
+		
+		// Vault 동기화 객체 초기화
+		console.log('[Markdown Hijacker] VaultSync 객체 초기화...');
+		this.vaultSync = new VaultSync(this.app);
+		
+		console.log('[Markdown Hijacker] ExternalSync 객체 초기화...');
+		this.externalSync = new ExternalSync(this.app, this.externalWatcher);
 		
 		// 설정 탭 추가
 		this.addSettingTab(new MarkdownHijackerSettingTab(this.app, this));
@@ -63,11 +75,6 @@ export default class MarkdownHijacker extends Plugin {
 		// 상태 바 아이템 설정
 		this.setupStatusBar();
 		
-		// 플러그인이 활성화된 경우에만 모니터링 시작
-		if (this.settings.pluginEnabled) {
-			this.startMonitoring();
-		}
-
 		// Register the file:open event
 		this.registerEvent(
 			this.app.workspace.on('file-open', (file: TFile | null) => {
@@ -77,17 +84,27 @@ export default class MarkdownHijacker extends Plugin {
 				this.handleFileOpen(filePath);
 			})
 		);
+		
+		// 플러그인 기능 활성화 - enableExternalSync 확인 먼저!
+		console.log(`[Markdown Hijacker] 외부 폴더 동기화 설정 확인 중: ${this.settings.enableExternalSync ? '활성화됨' : '비활성화됨'}`);
+		
+		// 플러그인이 활성화된 경우에만 모니터링 시작
+		if (this.settings.pluginEnabled) {
+			console.log('[Markdown Hijacker] 플러그인 활성화됨 - 모니터링 시작...');
+			this.startMonitoring();
+		} else {
+			console.log('[Markdown Hijacker] 플러그인 비활성화됨 - 모니터링 건너뜀');
+		}
 
-		// Start monitoring external changes
-		console.log('외부 폴더 동기화 설정 확인 중:', this.settings.enableExternalSync);
+		// 외부 폴더 동기화가 활성화된 경우에만 동기화 모니터링 시작
 		if (this.settings.enableExternalSync) {
-			console.log('외부 폴더 동기화 시작...');
+			console.log('[Markdown Hijacker] 외부 폴더 동기화 시작...');
 			this.startMonitoringExternalChanges();
 		} else {
-			console.log('외부 폴더 동기화가 비활성화되어 있습니다. 설정에서 활성화하세요.');
+			console.log('[Markdown Hijacker] 외부 폴더 동기화가 비활성화되어 있습니다. 설정에서 활성화하세요.');
 		}
 		
-		console.log('MarkdownHijacker plugin 로드 완료');
+		console.log('[Markdown Hijacker] 플러그인 로드 완료');
 	}
 
 	onunload() {
@@ -248,6 +265,9 @@ export default class MarkdownHijacker extends Plugin {
 				// 폴더의 모든 마크다운 파일에 대해 프론트매터 추가 처리
 				this.scanFolderAndProcessMarkdownFiles(mapping.externalPath, mapping.externalPath);
 				
+				// 폴더의 모든 마크다운 파일을 Vault로 동기화
+				this.scanFolderAndSyncToVault(mapping);
+				
 				console.log(`[Markdown Hijacker] 폴더 스캔 완료: ${mapping.externalPath}`);
 			} catch (error) {
 				console.error(`[Markdown Hijacker] 폴더 스캔 오류: ${mapping.externalPath} - ${error}`);
@@ -312,10 +332,19 @@ export default class MarkdownHijacker extends Plugin {
 
 		console.log(`[Markdown Hijacker] 외부 폴더 변경 감지 시작...`);
 		
+		// 활성화된 매핑 수 확인 (디버깅용)
+		const enabledMappings = this.settings.folderMappings.filter(m => m.enabled);
+		console.log(`[Markdown Hijacker] 활성화된 폴더 매핑: ${enabledMappings.length}개`);
+		
+		// 매핑 정보 상세 로깅
+		enabledMappings.forEach((m, index) => {
+			console.log(`[Markdown Hijacker] 매핑 #${index+1} - ID: ${m.id}, 경로: ${m.vaultPath} ↔ ${m.externalPath}`);
+		});
+		
 		// Setup watchers for each external folder
 		for (const mapping of this.settings.folderMappings) {
 			if (mapping.externalPath && mapping.vaultPath) {
-				console.log(`[Markdown Hijacker] 워처 설정 시도: ${mapping.vaultPath} -> ${mapping.externalPath} (활성화: ${mapping.enabled})`);
+				console.log(`[Markdown Hijacker] 워처 설정 검토: ID=${mapping.id}, ${mapping.vaultPath} ↔ ${mapping.externalPath} (활성화: ${mapping.enabled})`);
 				
 				if (!mapping.enabled) {
 					console.log(`[Markdown Hijacker] 매핑이 비활성화되어 있어 건너뜁니다: ${mapping.vaultPath}`);
@@ -326,13 +355,28 @@ export default class MarkdownHijacker extends Plugin {
 					// 경로가 실제로 존재하는지 확인
 					if (!fs.existsSync(mapping.externalPath)) {
 						console.error(`[Markdown Hijacker] 외부 경로가 존재하지 않습니다: ${mapping.externalPath}`);
+						if (this.settings.showNotifications) {
+							new Notice(`외부 폴더가 존재하지 않습니다: ${mapping.externalPath}`);
+						}
 						continue;
 					}
 					
+					// 워처 설정 및 동기화 핸들러 연결
+					console.log(`[Markdown Hijacker] 워처 설정 시작: ID=${mapping.id}, 경로=${mapping.externalPath}`);
 					const result = this.externalWatcher.setupWatcher(mapping, this.settings.showNotifications);
 					console.log(`[Markdown Hijacker] 워처 설정 ${result ? '성공' : '실패'}: ${mapping.externalPath}`);
+					
+					// 동기화 핸들러 설정
+					if (result) {
+						console.log(`[Markdown Hijacker] 동기화 핸들러 설정 시작: ID=${mapping.id}, 경로=${mapping.externalPath}`);
+						this.externalSync.setupSyncHandlers(mapping);
+						console.log(`[Markdown Hijacker] 동기화 핸들러 설정 완료: ID=${mapping.id}`);
+					}
 				} catch (error) {
 					console.error(`[Markdown Hijacker] 워처 설정 오류: ${mapping.externalPath} - ${error}`);
+					if (this.settings.showNotifications) {
+						new Notice(`외부 폴더 감시 설정 오류: ${mapping.externalPath}`);
+					}
 				}
 			} else {
 				console.log(`[Markdown Hijacker] 매핑 경로가 없거나 올바르지 않습니다: Vault=${mapping.vaultPath}, External=${mapping.externalPath}`);
@@ -382,6 +426,79 @@ export default class MarkdownHijacker extends Plugin {
 				
 				break;
 			}
+		}
+	}
+
+	// 외부 폴더 스캔 및 Vault 동기화 메서드 추가
+	private async scanFolderAndSyncToVault(mapping: FolderMapping) {
+		try {
+			console.log(`[Markdown Hijacker] 폴더 동기화 시작: ${mapping.externalPath} -> ${mapping.vaultPath}`);
+			
+			// 폴더 내의 모든 파일을 재귀적으로 스캔
+			this.syncFolderContents(mapping.externalPath, mapping);
+			
+			console.log(`[Markdown Hijacker] 폴더 동기화 완료: ${mapping.externalPath}`);
+		} catch (error) {
+			console.error(`[Markdown Hijacker] 폴더 동기화 오류: ${error}`);
+		}
+	}
+
+	private async syncFolderContents(folderPath: string, mapping: FolderMapping) {
+		try {
+			const files = fs.readdirSync(folderPath);
+			
+			for (const file of files) {
+				const fullPath = path.join(folderPath, file);
+				
+				try {
+					const stats = fs.statSync(fullPath);
+					
+					if (stats.isDirectory()) {
+						// 서브폴더에 대해 재귀 호출
+						await this.syncFolderContents(fullPath, mapping);
+					} else if (file.toLowerCase().endsWith('.md')) {
+						// 마크다운 파일인 경우 Vault에 동기화
+						await this.syncFileToVault(fullPath, mapping);
+					}
+				} catch (err) {
+					console.error(`[Markdown Hijacker] 파일 처리 오류: ${fullPath} - ${err}`);
+				}
+			}
+		} catch (err) {
+			console.error(`[Markdown Hijacker] 폴더 읽기 오류: ${folderPath} - ${err}`);
+		}
+	}
+
+	private async syncFileToVault(externalPath: string, mapping: FolderMapping) {
+		try {
+			// Vault 내부 경로 계산
+			const vaultPath = this.vaultSync.externalToVaultPath(externalPath, mapping);
+			
+			// 파일 존재 여부 확인
+			const { exists, file } = this.vaultSync.fileExistsInVault(vaultPath);
+			
+			// 파일 내용 읽기
+			const content = fs.readFileSync(externalPath, 'utf8');
+			
+			if (!exists) {
+				// Vault에 파일이 없으면 새로 생성
+				console.log(`[Markdown Hijacker] Vault에 파일 생성: ${vaultPath}`);
+				await this.vaultSync.createFile(vaultPath, content);
+			} else if (file) {
+				// Vault에 파일이 있으면 수정 시간 비교 후 업데이트
+				const externalStats = fs.statSync(externalPath);
+				const vaultStats = await this.app.vault.adapter.stat(vaultPath);
+				
+				// 외부 파일이 더 최신인 경우에만 업데이트
+				if (vaultStats && externalStats.mtime.getTime() > vaultStats.mtime) {
+					console.log(`[Markdown Hijacker] Vault 파일 업데이트: ${vaultPath}`);
+					await this.vaultSync.modifyFile(file, content);
+				} else {
+					console.log(`[Markdown Hijacker] Vault 파일이 더 최신이거나 정보를 가져올 수 없어 업데이트 안함: ${vaultPath}`);
+				}
+			}
+		} catch (error) {
+			console.error(`[Markdown Hijacker] 파일 동기화 오류: ${externalPath} - ${error}`);
 		}
 	}
 }
