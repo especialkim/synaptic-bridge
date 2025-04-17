@@ -60,16 +60,72 @@ export class VaultSync {
      * @param folderPath 생성할 폴더 경로
      */
     private async ensureParentFolders(folderPath: string): Promise<void> {
+        console.log(`[Vault Sync] 🗂️ 상위 폴더 생성 시작: ${folderPath}`);
+        
+        // 루트 경로나 빈 문자열인 경우 종료
+        if (!folderPath || folderPath === '.' || folderPath === '/') {
+            console.log(`[Vault Sync] 🗂️ 루트 폴더 도달 또는 빈 경로: ${folderPath}`);
+            return;
+        }
+        
         const parentPath = path.dirname(folderPath);
+        console.log(`[Vault Sync] 🗂️ 상위 폴더 경로: ${parentPath}`);
         
-        if (parentPath === '.') return;
+        // 상위 경로가 루트 또는 빈 경로인 경우도 체크
+        if (!parentPath || parentPath === '.' || parentPath === '/') {
+            console.log(`[Vault Sync] 🗂️ 상위 폴더가 루트 경로: ${parentPath}`);
+            
+            // 현재 폴더만 생성
+            try {
+                console.log(`[Vault Sync] 🗂️ 최상위 폴더 생성 시도: ${folderPath}`);
+                await this.app.vault.createFolder(folderPath);
+                console.log(`[Vault Sync] ✅ 최상위 폴더 생성 성공: ${folderPath}`);
+                return;
+            } catch (error) {
+                if (error.message && error.message.includes('already exists')) {
+                    console.log(`[Vault Sync] ℹ️ 최상위 폴더가 이미 존재함: ${folderPath}`);
+                    return;
+                }
+                throw error;
+            }
+        }
         
-        const parent = this.app.vault.getAbstractFileByPath(parentPath);
-        if (!parent) {
-            // 상위 폴더 먼저 생성
-            await this.ensureParentFolders(parentPath);
+        try {
+            // 현재 경로 확인
+            const currentFolder = this.app.vault.getAbstractFileByPath(folderPath);
+            if (currentFolder) {
+                console.log(`[Vault Sync] 🗂️ 폴더가 이미 존재함: ${folderPath}`);
+                return; // 이미 존재하면 종료
+            }
+            
+            // 상위 폴더 확인
+            const parent = this.app.vault.getAbstractFileByPath(parentPath);
+            
+            if (!parent) {
+                console.log(`[Vault Sync] 🗂️ 상위 폴더가 없음, 먼저 생성: ${parentPath}`);
+                // 상위 폴더 먼저 생성 (재귀)
+                await this.ensureParentFolders(parentPath);
+            } else {
+                console.log(`[Vault Sync] 🗂️ 상위 폴더 이미 존재함: ${parentPath}`);
+            }
+            
             // 현재 폴더 생성
-            await this.app.vault.createFolder(parentPath);
+            console.log(`[Vault Sync] 🗂️ 폴더 생성 시도: ${folderPath}`);
+            try {
+                await this.app.vault.createFolder(folderPath);
+                console.log(`[Vault Sync] ✅ 폴더 생성 성공: ${folderPath}`);
+            } catch (error) {
+                // 이미 존재하는 경우 무시
+                if (error.message && error.message.includes('already exists')) {
+                    console.log(`[Vault Sync] ℹ️ 폴더가 이미 존재함 (중복 생성 시도): ${folderPath}`);
+                } else {
+                    console.error(`[Vault Sync] ❌ 폴더 생성 오류: ${folderPath}`, error);
+                    throw error;
+                }
+            }
+        } catch (error) {
+            console.error(`[Vault Sync] ❌ 상위 폴더 생성 오류: ${error.message}`);
+            throw error;
         }
     }
 
@@ -85,7 +141,24 @@ export class VaultSync {
             // 폴더 경로 확인 및 생성
             const folderPath = path.dirname(vaultPath);
             console.log(`[Vault Sync] 상위 폴더 확인: ${folderPath}`);
-            await this.ensureParentFolders(folderPath);
+            
+            // 상위 폴더 생성 로직 강화
+            try {
+                await this.ensureParentFolders(folderPath);
+                console.log(`[Vault Sync] 상위 폴더 생성 완료: ${folderPath}`);
+                
+                // 폴더 존재 재확인
+                const folderExists = this.app.vault.getAbstractFileByPath(folderPath);
+                console.log(`[Vault Sync] 상위 폴더 존재 확인: ${folderExists ? '있음' : '없음'}`);
+                
+                if (!folderExists) {
+                    console.error(`[Vault Sync] ⚠️ 상위 폴더 생성 실패: ${folderPath}`);
+                    throw new Error(`상위 폴더가 생성되지 않음: ${folderPath}`);
+                }
+            } catch (folderError) {
+                console.error(`[Vault Sync] ❌ 상위 폴더 생성 오류:`, folderError);
+                throw folderError;
+            }
             
             // 파일 존재 확인
             const existingFile = this.app.vault.getAbstractFileByPath(vaultPath);
@@ -99,11 +172,21 @@ export class VaultSync {
             
             // 파일 생성
             console.log(`[Vault Sync] vault.create 호출: ${vaultPath}`);
-            const file = await this.app.vault.create(vaultPath, content);
-            console.log(`[Vault Sync] 파일 생성 완료: ${vaultPath}, 파일 ID: ${file.path}`);
-            return file;
+            try {
+                const file = await this.app.vault.create(vaultPath, content);
+                console.log(`[Vault Sync] 파일 생성 완료: ${vaultPath}, 파일 ID: ${file.path}`);
+                return file;
+            } catch (createError) {
+                console.error(`[Vault Sync] 파일 생성 시도 중 오류:`, createError);
+                
+                // 파일 경로 구성요소 출력 (디버깅용)
+                const pathParts = vaultPath.split('/');
+                console.log(`[Vault Sync] 파일 경로 구성요소:`, pathParts);
+                
+                throw createError;
+            }
         } catch (error) {
-            console.error(`[Vault Sync] 파일 생성 오류: ${error}`);
+            console.error(`[Vault Sync] 파일 생성 오류:`, error);
             if (error instanceof Error) {
                 console.error(`[Vault Sync] 오류 내용: ${error.message}`);
                 console.error(`[Vault Sync] 오류 스택: ${error.stack}`);
@@ -149,12 +232,37 @@ export class VaultSync {
      */
     public async deleteFile(file: TFile): Promise<boolean> {
         try {
-            console.log(`[Vault Sync] 파일 삭제 시작: ${file.path}`);
+            console.log(`[Vault Sync] 🗑️ 파일 삭제 시작: ${file.path}`);
+            
+            // 파일 존재 확인
+            const existingFile = this.app.vault.getAbstractFileByPath(file.path);
+            if (!existingFile) {
+                console.log(`[Vault Sync] ⚠️ 이미 삭제되었거나 존재하지 않는 파일: ${file.path}`);
+                return true; // 이미 삭제되었으면 성공으로 간주
+            }
+            
+            // 파일 유형 확인
+            if (!(existingFile instanceof TFile)) {
+                console.error(`[Vault Sync] ❌ 지정된 경로가 파일이 아님: ${file.path}`);
+                return false;
+            }
+            
+            // 파일 삭제 실행
+            console.log(`[Vault Sync] 🗑️ vault.delete 호출: ${file.path}`);
             await this.app.vault.delete(file);
-            console.log(`[Vault Sync] 파일 삭제 완료: ${file.path}`);
-            return true;
+            
+            // 삭제 후 확인
+            const checkExists = this.app.vault.getAbstractFileByPath(file.path);
+            const deleted = !checkExists;
+            console.log(`[Vault Sync] ${deleted ? '✅ 파일 삭제 완료' : '❌ 파일 삭제 실패'}: ${file.path}`);
+            
+            return deleted;
         } catch (error) {
-            console.error(`[Vault Sync] 파일 삭제 오류: ${error}`);
+            console.error(`[Vault Sync] ❌ 파일 삭제 오류:`, error);
+            if (error instanceof Error) {
+                console.error(`[Vault Sync] 오류 내용: ${error.message}`);
+                console.error(`[Vault Sync] 오류 스택: ${error.stack}`);
+            }
             return false;
         }
     }

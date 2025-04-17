@@ -25,6 +25,7 @@ export interface MarkdownHijackerSettings {
     debugMode: boolean;             // 디버그 모드 활성화 여부
     enableExternalSync: boolean;     // 외부 폴더 동기화 활성화 여부
     showNotifications: boolean;      // 변경 알림 표시 여부
+    enableVaultSync: boolean;        // 내부 변경 동기화 활성화 여부
 }
 
 // 기본 설정값 정의
@@ -38,7 +39,8 @@ export const DEFAULT_SETTINGS: MarkdownHijackerSettings = {
     syncInterval: 1000,    // 1초
     debugMode: false,
     enableExternalSync: false,
-    showNotifications: true
+    showNotifications: true,
+    enableVaultSync: false
 }
 
 // 설정 탭 클래스
@@ -289,10 +291,29 @@ export class MarkdownHijackerSettingTab extends PluginSettingTab {
                     }
                 }));
         
+        // Enable vault sync toggle (내부 변경 동기화 옵션 추가)
+        new Setting(containerEl)
+            .setName('내부 변경 동기화 활성화')
+            .setDesc('Vault 내부의 변경사항을 감지하고 외부 폴더와 동기화합니다.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableVaultSync || false)
+                .onChange(async (value) => {
+                    this.plugin.settings.enableVaultSync = value;
+                    await this.plugin.saveSettings();
+                    
+                    if (value) {
+                        this.plugin.startMonitoringInternalChanges();
+                        new Notice('내부 변경 동기화가 활성화되었습니다.');
+                    } else {
+                        this.plugin.stopMonitoringInternalChanges();
+                        new Notice('내부 변경 동기화가 비활성화되었습니다.');
+                    }
+                }));
+        
         // Show notifications toggle
         new Setting(containerEl)
             .setName('변경 알림 표시')
-            .setDesc('외부 폴더의 파일이 변경되면 알림을 표시합니다.')
+            .setDesc('파일이 변경되면 알림을 표시합니다.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.showNotifications || true)
                 .onChange(async (value) => {

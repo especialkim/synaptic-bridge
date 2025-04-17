@@ -135,4 +135,30 @@ function preserveTrailingLines(content: string, trailingNewlines: string): strin
 export function createOriginPathValue(externalPath: string, relativePath: string): string {
     // 경로 구분자 정규화 (슬래시로 통일)
     return path.join(externalPath, relativePath).replace(/\\/g, '/');
+}
+
+/**
+ * 마크다운 콘텐츠에서 originPath 프론트매터 추출
+ * @param content 마크다운 내용
+ * @returns originPath 값 또는 빈 문자열
+ */
+export function extractOriginPathFromFrontMatter(content: string): string {
+    console.log(`[FrontMatter Utils] originPath 추출 시작`);
+    
+    // 프론트매터 존재 확인
+    if (!content.startsWith('---')) {
+        console.log(`[FrontMatter Utils] 프론트매터 없음`);
+        return '';
+    }
+    
+    // 정규식으로 originPath 추출
+    const match = content.match(/^---[\s\S]*?originPath:\s*([^\s\n].*?)[\s\n][\s\S]*?---/);
+    if (match && match[1]) {
+        const originPath = match[1].trim();
+        console.log(`[FrontMatter Utils] originPath 추출됨: ${originPath}`);
+        return originPath;
+    }
+    
+    console.log(`[FrontMatter Utils] originPath 없음`);
+    return '';
 } 

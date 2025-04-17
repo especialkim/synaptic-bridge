@@ -71,8 +71,8 @@ export class ExternalSync {
         console.log(`[External Sync] 💫 이벤트 처리 시작 - 유형: ${eventType}, 파일: ${filename}, 경로: ${fullPath}`);
         
         try {
-            // 유효성 검사
-            if (!fullPath || !fs.existsSync(fullPath)) {
+            // 유효성 검사 - unlink 이벤트는 파일이 존재하지 않는 것이 정상
+            if (eventType !== 'unlink' && (!fullPath || !fs.existsSync(fullPath))) {
                 console.log(`[External Sync] ⚠️ 파일이 존재하지 않음: ${fullPath}`);
                 return;
             }
@@ -83,21 +83,35 @@ export class ExternalSync {
                 return;
             }
 
-            // 파일 상태 확인
-            const stats = fs.statSync(fullPath);
-            if (!stats.isFile()) {
-                console.log(`[External Sync] 📁 디렉토리 변경 무시: ${fullPath}`);
-                return;
-            }
-
-            console.log(`[External Sync] 📄 파일 정보 - 크기: ${stats.size}bytes, 수정: ${stats.mtime}`);
-
             // Vault 내 대상 경로 계산
             const vaultTargetPath = this.vaultSync.externalToVaultPath(fullPath, mapping);
             console.log(`[External Sync] 🔄 Vault 대상 경로: ${vaultTargetPath}`);
 
             // 이벤트 유형에 따라 처리
-            if (eventType === 'add' || eventType === 'change') {
+            if (eventType === 'unlink') {
+                // 삭제 이벤트 처리
+                console.log(`[External Sync] ➖ 파일 삭제 처리 시작: ${vaultTargetPath}`);
+                try {
+                    await this.handleDelete(vaultTargetPath);
+                    console.log(`[External Sync] ✅ 파일 삭제 처리 완료: ${vaultTargetPath}`);
+                    
+                    // 알림 표시
+                    new Notice(`🗑️ 외부 파일 삭제: ${filename}`);
+                    console.log(`[External Sync] 🔔 알림 표시: 삭제: ${filename}`);
+                } catch (error) {
+                    console.error(`[External Sync] ❌ 파일 삭제 처리 실패:`, error);
+                }
+            } else if (eventType === 'add' || eventType === 'change') {
+                // 파일 상태 확인 - 파일 생성/수정 이벤트에만 필요한 검증
+                const stats = fs.statSync(fullPath);
+                if (!stats.isFile()) {
+                    console.log(`[External Sync] 📁 디렉토리 변경 무시: ${fullPath}`);
+                    return;
+                }
+
+                console.log(`[External Sync] 📄 파일 정보 - 크기: ${stats.size}bytes, 수정: ${stats.mtime}`);
+
+                // 파일 생성/수정 처리
                 console.log(`[External Sync] ➕ 파일 생성/수정 처리 시작: ${fullPath} -> ${vaultTargetPath}`);
                 try {
                     await this.handleCreateOrModify(fullPath, vaultTargetPath);
@@ -109,18 +123,6 @@ export class ExternalSync {
                     console.log(`[External Sync] 🔔 알림 표시: ${action}: ${filename}`);
                 } catch (error) {
                     console.error(`[External Sync] ❌ 파일 생성/수정 처리 실패:`, error);
-                }
-            } else if (eventType === 'unlink') {
-                console.log(`[External Sync] ➖ 파일 삭제 처리 시작: ${vaultTargetPath}`);
-                try {
-                    await this.handleDelete(vaultTargetPath);
-                    console.log(`[External Sync] ✅ 파일 삭제 처리 완료: ${vaultTargetPath}`);
-                    
-                    // 알림 표시
-                    new Notice(`🗑️ 외부 파일 삭제: ${filename}`);
-                    console.log(`[External Sync] 🔔 알림 표시: 삭제: ${filename}`);
-                } catch (error) {
-                    console.error(`[External Sync] ❌ 파일 삭제 처리 실패:`, error);
                 }
             } else {
                 console.log(`[External Sync] ⚠️ 지원하지 않는 이벤트 유형: ${eventType}`);
@@ -212,11 +214,16 @@ export class ExternalSync {
             if (exists && file) {
                 // Vault에서 파일 삭제
                 console.log(`[External Sync] 🗑️ Vault 파일 삭제 시작: ${vaultPath}`);
-                const success = await this.vaultSync.deleteFile(file);
-                console.log(`[External Sync] ${success ? '✅ 삭제 완료' : '❌ 삭제 실패'}: ${vaultPath}`);
-                
-                if (success) {
-                    console.log(`[External Sync] 🔔 삭제 알림 표시: ${path.basename(vaultPath)}`);
+                try {
+                    const success = await this.vaultSync.deleteFile(file);
+                    console.log(`[External Sync] ${success ? '✅ 삭제 완료' : '❌ 삭제 실패'}: ${vaultPath}`);
+                    
+                    if (success) {
+                        console.log(`[External Sync] 🔔 삭제 알림 표시: ${path.basename(vaultPath)}`);
+                    }
+                } catch (deleteError) {
+                    console.error(`[External Sync] ❌ Vault 파일 삭제 중 오류:`, deleteError);
+                    throw deleteError;
                 }
             } else {
                 console.log(`[External Sync] ⚠️ Vault에 파일이 없어 삭제 건너뜀: ${vaultPath}`);
