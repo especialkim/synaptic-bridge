@@ -1,13 +1,17 @@
-import { App, Notice, TFile, Vault } from 'obsidian';
+import { App, Notice, TFile, Vault, TFolder } from 'obsidian';
 import { FolderMapping } from '../../settings';
 
 // SyncHandler 타입 정의 - external-watcher와 동일한 형태로 유지
 export type SyncHandler = (eventType: string, file: TFile) => void;
 
+// 폴더 핸들러 타입 - 폴더 이벤트 처리용
+export type FolderSyncHandler = (eventType: string, folderPath: string) => void;
+
 export class InternalWatcher {
     private app: App;
     private vault: Vault;
     private syncHandlers: Map<string, SyncHandler> = new Map();
+    private folderSyncHandlers: Map<string, FolderSyncHandler> = new Map();
     private mappings: Map<string, FolderMapping> = new Map();
     private debugMode: boolean;
     private showNotifications: boolean;
@@ -45,6 +49,8 @@ export class InternalWatcher {
         this.vault.on('delete', (file) => {
             if (file instanceof TFile) {
                 this.handleVaultFileDelete(file);
+            } else if (file instanceof TFolder) {
+                this.handleVaultFolderDelete(file);
             }
         });
         
@@ -52,6 +58,8 @@ export class InternalWatcher {
         this.vault.on('rename', (file, oldPath) => {
             if (file instanceof TFile) {
                 this.handleVaultFileRename(file, oldPath);
+            } else if (file instanceof TFolder) {
+                this.handleVaultFolderRename(file, oldPath);
             }
         });
         
@@ -266,6 +274,110 @@ export class InternalWatcher {
         } else {
             console.log(`[Internal Watcher] ⚠️ 핸들러 없음: ${id}`);
         }
+    }
+
+    /**
+     * Vault 폴더 삭제 이벤트 처리
+     * @param folder 삭제된 폴더
+     */
+    private handleVaultFolderDelete(folder: TFolder): void {
+        console.log(`[Internal Watcher] 📁 폴더 삭제 감지: ${folder.path}`);
+        
+        // 매핑된 폴더인지 확인
+        const mappingInfo = this.isMappedFolder(folder);
+        if (!mappingInfo) return;
+        
+        // 파일 핸들러 호출 - 폴더를 파일처럼 처리
+        // 현재 구조에서는 파일 핸들러를 활용 (폴더 삭제를 파일 삭제와 유사하게 처리)
+        const { mapping, id } = mappingInfo;
+        const handler = this.syncHandlers.get(id);
+        
+        if (handler) {
+            console.log(`[Internal Watcher] 🔄 동기화 핸들러 호출: 'deleteDir', ${folder.path}`);
+            // 폴더 객체를 파일 객체로 취급하고 경로를 유지
+            const folderAsTFile = { path: folder.path } as TFile;
+            handler('deleteDir', folderAsTFile);
+            
+            if (this.showNotifications) {
+                new Notice(`🗑️ 내부 폴더 삭제: ${folder.name}`);
+            }
+        } else {
+            console.log(`[Internal Watcher] ⚠️ 핸들러 없음: ${id}`);
+        }
+    }
+    
+    /**
+     * Vault 폴더 이름 변경 이벤트 처리
+     * @param folder 이름이 변경된 폴더
+     * @param oldPath 이전 경로
+     */
+    private handleVaultFolderRename(folder: TFolder, oldPath: string): void {
+        console.log(`[Internal Watcher] 📁 폴더 이름 변경 감지: ${oldPath} -> ${folder.path}`);
+        
+        // 매핑된 폴더인지 확인 (새 경로 또는 이전 경로 둘 중 하나라도 매핑되면 처리)
+        const mappingInfo = this.isMappedFolder(folder);
+        if (!mappingInfo) {
+            console.log(`[Internal Watcher] 🔍 이전 경로 확인 중: ${oldPath}`);
+            
+            // 이전 경로가 매핑된 폴더인지 확인
+            for (const [id, mapping] of this.mappings.entries()) {
+                if (oldPath.startsWith(mapping.vaultPath + '/') || oldPath === mapping.vaultPath) {
+                    const handler = this.syncHandlers.get(id);
+                    if (handler) {
+                        console.log(`[Internal Watcher] 🔄 이전 매핑에서 동기화 핸들러 호출: 'renameDir', ${folder.path}, 이전=${oldPath}`);
+                        // 파일로 취급
+                        const folderAsTFile = { path: folder.path } as TFile;
+                        (folderAsTFile as any).oldPath = oldPath;
+                        handler('renameDir', folderAsTFile);
+                        
+                        if (this.showNotifications) {
+                            new Notice(`📋 내부 폴더 이동: ${folder.name}`);
+                        }
+                    }
+                    return;
+                }
+            }
+            return;
+        }
+        
+        // 동기화 핸들러 호출
+        const { mapping, id } = mappingInfo;
+        const handler = this.syncHandlers.get(id);
+        
+        if (handler) {
+            console.log(`[Internal Watcher] 🔄 동기화 핸들러 호출: 'renameDir', ${folder.path}, 이전=${oldPath}`);
+            // 파일로 취급
+            const folderAsTFile = { path: folder.path } as TFile;
+            (folderAsTFile as any).oldPath = oldPath;
+            handler('renameDir', folderAsTFile);
+            
+            if (this.showNotifications) {
+                new Notice(`📋 내부 폴더 이름 변경: ${folder.name}`);
+            }
+        } else {
+            console.log(`[Internal Watcher] ⚠️ 핸들러 없음: ${id}`);
+        }
+    }
+    
+    /**
+     * 폴더가 매핑된 폴더에 속하는지 확인
+     * @param folder 확인할 폴더
+     * @returns 폴더가 속한 매핑 정보 또는 null
+     */
+    private isMappedFolder(folder: TFolder): { mapping: FolderMapping, id: string } | null {
+        const folderPath = folder.path;
+        console.log(`[Internal Watcher] 🔍 폴더 매핑 확인: ${folderPath}`);
+        
+        for (const [id, mapping] of this.mappings.entries()) {
+            // 폴더 경로가 매핑된 Vault 폴더로 시작하는지 확인
+            if (folderPath.startsWith(mapping.vaultPath + '/') || folderPath === mapping.vaultPath) {
+                console.log(`[Internal Watcher] ✅ 매핑된 폴더 발견: ${folderPath} in ${mapping.vaultPath}, 매핑 ID=${id}`);
+                return { mapping, id };
+            }
+        }
+        
+        console.log(`[Internal Watcher] ❌ 매핑되지 않은 폴더: ${folderPath}`);
+        return null;
     }
 
     /**

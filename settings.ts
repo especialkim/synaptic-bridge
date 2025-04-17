@@ -1,6 +1,7 @@
 import { App, PluginSettingTab, Setting, Notice, TFolder, TAbstractFile, setIcon, DropdownComponent, TextComponent, Modal } from 'obsidian';
 import { v4 as uuidv4 } from 'uuid';
 import MarkdownHijacker from './main';
+import * as fs from 'fs';
 
 // 폴더 매핑 인터페이스
 export interface FolderMapping {
@@ -107,7 +108,7 @@ export class MarkdownHijackerSettingTab extends PluginSettingTab {
                         id: uuidv4(),
                         vaultPath: '',
                         externalPath: '',
-                        enabled: true
+                        enabled: false
                     };
                     
                     this.plugin.settings.folderMappings.push(newMapping);
@@ -170,7 +171,26 @@ export class MarkdownHijackerSettingTab extends PluginSettingTab {
                     
                     if (this.plugin.settings.pluginEnabled) {
                         if (value) {
+                            // 매핑 활성화 시 워처 설정 및 초기 스캔 수행
                             this.plugin.setupWatcher(mapping);
+                            
+                            // 외부 폴더가 존재하는지 확인
+                            if (fs.existsSync(mapping.externalPath)) {
+                                new Notice(`폴더 스캔 시작: ${mapping.externalPath}`);
+                                
+                                // 폴더의 모든 마크다운 파일에 대해 프론트매터 추가 처리
+                                try {
+                                    // 폴더 초기 스캔 시작
+                                    new Notice(`폴더 스캔 중: ${mapping.externalPath}`);
+                                    await this.plugin.scanFolderAndSyncToVault(mapping);
+                                    new Notice(`폴더 스캔 완료: ${mapping.externalPath}`);
+                                } catch (error) {
+                                    console.error(`폴더 스캔 오류: ${error}`);
+                                    new Notice(`폴더 스캔 중 오류 발생: ${error.message}`);
+                                }
+                            } else {
+                                new Notice(`외부 폴더가 존재하지 않습니다: ${mapping.externalPath}`);
+                            }
                         } else {
                             this.plugin.removeWatcher(mapping.id);
                         }

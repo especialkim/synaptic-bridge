@@ -78,7 +78,7 @@ export default class MarkdownHijacker extends Plugin {
 		this.vaultSync = new VaultSync(this.app);
 		
 		console.log('[Markdown Hijacker] ExternalSync 객체 초기화...');
-		this.externalSync = new ExternalSync(this.app, this.externalWatcher);
+		this.externalSync = new ExternalSync(this, this.externalWatcher, this.vaultSync);
 		
 		console.log('[Markdown Hijacker] InternalSync 객체 초기화...');
 		this.internalSync = new InternalSync(this.app, this.internalWatcher);
@@ -144,7 +144,7 @@ export default class MarkdownHijacker extends Plugin {
 		const mergedDefaults = Object.assign({}, DEFAULT_SETTINGS, ADDITIONAL_DEFAULT_SETTINGS);
 		this.settings = Object.assign({}, mergedDefaults, await this.loadData());
 	}
-	
+
 	// 설정 저장
 	async saveSettings() {
 		await this.saveData(this.settings);
@@ -319,6 +319,8 @@ export default class MarkdownHijacker extends Plugin {
 					} else if (fullPath.toLowerCase().endsWith('.md')) {
 						// 마크다운 파일인 경우 프론트매터 처리
 						const relativePath = fullPath.substring(basePath.length);
+						console.log(`[Markdown Hijacker] 마크다운 파일 처리: ${fullPath}, 상대 경로: ${relativePath}`);
+						// 외부 워처의 processMarkdownFile 메서드 사용
 						this.externalWatcher.processMarkdownFile(fullPath, basePath, relativePath);
 					}
 				} catch (err) {
@@ -455,7 +457,7 @@ export default class MarkdownHijacker extends Plugin {
 	}
 
 	// 외부 폴더 스캔 및 Vault 동기화 메서드 추가
-	private async scanFolderAndSyncToVault(mapping: FolderMapping) {
+	public async scanFolderAndSyncToVault(mapping: FolderMapping) {
 		try {
 			console.log(`[Markdown Hijacker] 폴더 동기화 시작: ${mapping.externalPath} -> ${mapping.vaultPath}`);
 			
