@@ -585,13 +585,41 @@ export class ExternalFolderWatcher {
             // vault 이름 가져오기 
             const vaultName = this.app.vault.getName();
             
-            // vault 내 상대 경로 계산 (매핑 기반)
+            // 파일이 어떤 매핑에 속하는지 확인
             let vaultPath = '';
-            for (const [id, mapping] of this.mappings.entries()) {
-                if (fullPath.startsWith(mapping.externalPath)) {
+            let fileMapping = null;
+            let belongsToCurrentMapping = false;
+
+            // 현재 매핑 ID 찾기
+            const matchingMappingId = Array.from(this.mappings.entries()).find(
+                ([id, mapping]) => fullPath.startsWith(mapping.externalPath)
+            )?.[0];
+
+            if (matchingMappingId) {
+                const mapping = this.mappings.get(matchingMappingId);
+                if (mapping) {
                     const relPath = fullPath.substring(mapping.externalPath.length);
                     vaultPath = path.join(mapping.vaultPath, relPath).replace(/\\/g, '/');
-                    break;
+                    fileMapping = mapping;
+                    belongsToCurrentMapping = fullPath.startsWith(basePath);
+
+                    console.log(`[External Watcher] 파일이 매핑에 속함: ID=${mapping.id}, vaultPath=${vaultPath}, 현재매핑=${belongsToCurrentMapping}`);
+                }
+            }
+
+            // 기존 프론트매터에서 originPath 추출
+            const originPath = extractOriginPathFromFrontMatter(content);
+            const hasOriginPath = !!originPath;
+            
+            // originPath가 이미 있는지 확인
+            if (hasOriginPath) {
+                console.log(`[External Watcher] 기존 originPath 발견: ${originPath}`);
+                
+                // 다른 매핑 경로가 설정되어 있는지 확인
+                const hasOtherMappingPath = originPath && !originPath.includes(basePath);
+                if (hasOtherMappingPath && fileMapping && fileMapping.externalPath !== basePath) {
+                    console.log(`[External Watcher] 파일이 다른 매핑에 속함 (${fileMapping.id}), 처리 생략`);
+                    return false;
                 }
             }
             

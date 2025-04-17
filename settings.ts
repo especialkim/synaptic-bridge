@@ -54,13 +54,65 @@ export class MarkdownHijackerSettingTab extends PluginSettingTab {
     }
 
     display(): void {
-        const {containerEl} = this;
+        const { containerEl } = this;
         containerEl.empty();
 
-        containerEl.createEl('h2', {text: 'Markdown Hijacker 설정'});
+        containerEl.createEl('h2', { text: 'Markdown Hijacker 설정' });
 
-        this.addPluginEnableToggle(containerEl);
-        this.addFolderMappingSection(containerEl);
+        new Setting(containerEl)
+            .setName('플러그인 활성화')
+            .setDesc('플러그인을 활성화 또는 비활성화합니다.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.pluginEnabled)
+                .onChange(async (value) => {
+                    this.plugin.settings.pluginEnabled = value;
+                    await this.plugin.saveSettings();
+                    
+                    // 토글 상태에 따라 워처 설정 또는 제거
+                    if (value) {
+                        this.plugin.startMonitoringExternalChanges();
+                    } else {
+                        this.plugin.stopMonitoringExternalChanges();
+                    }
+                }));
+
+        // 폴더 매핑 섹션
+        containerEl.createEl('h3', { text: '폴더 매핑' });
+        
+        const mappingContainer = containerEl.createDiv('mapping-container');
+        
+        // 기존 매핑 항목 표시
+        this.plugin.settings.folderMappings.forEach(mapping => {
+            this.createMappingElement(mappingContainer, mapping);
+        });
+        
+        // 새 매핑 추가 버튼
+        new Setting(containerEl)
+            .setName('폴더 매핑 추가')
+            .setDesc('외부 폴더와 Vault 폴더 간의 새 매핑을 추가합니다.')
+            .addButton(button => button
+                .setButtonText('+ 새 매핑 추가')
+                .setCta()
+                .onClick(async () => {
+                    // 새 매핑 생성
+                    const newMapping: FolderMapping = {
+                        id: this.generateUUID(),
+                        externalPath: '',
+                        vaultPath: '',
+                        enabled: false
+                    };
+                    
+                    // 설정에 추가
+                    this.plugin.settings.folderMappings.push(newMapping);
+                    await this.plugin.saveSettings();
+                    
+                    // 설정 UI 새로고침
+                    this.display();
+                    
+                    // 새 매핑이 활성화되고 경로가 설정된 후 초기 스캔을 수행하도록 안내
+                    new Notice('새 매핑이 추가되었습니다. 경로를 설정한 후 동기화가 시작됩니다.');
+                }));
+
         this.addSubfolderFilterSection(containerEl);
         this.addExternalSyncSection(containerEl);
         this.addAdvancedSettingsSection(containerEl);
@@ -97,24 +149,33 @@ export class MarkdownHijackerSettingTab extends PluginSettingTab {
         });
         
         // 새 매핑 추가 버튼
-        new Setting(containerEl)
-            .setName('새 폴더 매핑 추가')
-            .setDesc('Vault 내 폴더와 외부 폴더를 연결합니다.')
-            .addButton(button => button
-                .setButtonText('매핑 추가')
-                .setCta()
-                .onClick(() => {
-                    const newMapping: FolderMapping = {
-                        id: uuidv4(),
-                        vaultPath: '',
-                        externalPath: '',
-                        enabled: false
-                    };
-                    
-                    this.plugin.settings.folderMappings.push(newMapping);
-                    this.createMappingElement(mappingContainer, newMapping);
-                    this.plugin.saveSettings();
-                }));
+        if (mappingContainer.parentElement) {
+            new Setting(mappingContainer.parentElement)
+                .setName('폴더 매핑 추가')
+                .setDesc('외부 폴더와 Vault 폴더 간의 새 매핑을 추가합니다.')
+                .addButton(button => button
+                    .setButtonText('+ 새 매핑 추가')
+                    .setCta()
+                    .onClick(async () => {
+                        // 새 매핑 생성
+                        const newMapping: FolderMapping = {
+                            id: this.generateUUID(),
+                            externalPath: '',
+                            vaultPath: '',
+                            enabled: false
+                        };
+                        
+                        // 설정에 추가
+                        this.plugin.settings.folderMappings.push(newMapping);
+                        await this.plugin.saveSettings();
+                        
+                        // 설정 UI 새로고침
+                        this.display();
+                        
+                        // 새 매핑이 활성화되고 경로가 설정된 후 초기 스캔을 수행하도록 안내
+                        new Notice('새 매핑이 추가되었습니다. 경로를 설정한 후 동기화가 시작됩니다.');
+                    }));
+        }
     }
     
     private createMappingElement(container: HTMLElement, mapping: FolderMapping): void {
@@ -172,27 +233,19 @@ export class MarkdownHijackerSettingTab extends PluginSettingTab {
                     if (this.plugin.settings.pluginEnabled) {
                         if (value) {
                             // 매핑 활성화 시 워처 설정 및 초기 스캔 수행
-                            this.plugin.setupWatcher(mapping);
-                            
-                            // 외부 폴더가 존재하는지 확인
-                            if (fs.existsSync(mapping.externalPath)) {
-                                new Notice(`폴더 스캔 시작: ${mapping.externalPath}`);
-                                
-                                // 폴더의 모든 마크다운 파일에 대해 프론트매터 추가 처리
-                                try {
-                                    // 폴더 초기 스캔 시작
-                                    new Notice(`폴더 스캔 중: ${mapping.externalPath}`);
-                                    await this.plugin.scanFolderAndSyncToVault(mapping);
-                                    new Notice(`폴더 스캔 완료: ${mapping.externalPath}`);
-                                } catch (error) {
-                                    console.error(`폴더 스캔 오류: ${error}`);
-                                    new Notice(`폴더 스캔 중 오류 발생: ${error.message}`);
-                                }
-                            } else {
-                                new Notice(`외부 폴더가 존재하지 않습니다: ${mapping.externalPath}`);
+                            try {
+                                // 새로운 scanAndSetupMapping 함수를 사용하여 매핑 설정 및 초기화
+                                new Notice(`폴더 스캔 및 설정 시작: ${mapping.externalPath}`);
+                                await this.plugin.scanAndSetupMapping(mapping);
+                                new Notice(`폴더 스캔 및 설정 완료: ${mapping.externalPath}`);
+                            } catch (error) {
+                                console.error(`폴더 스캔 및 설정 오류: ${error}`);
+                                new Notice(`폴더 스캔 및 설정 중 오류 발생: ${error.message}`);
                             }
                         } else {
+                            // 매핑 비활성화 시 워처 제거
                             this.plugin.removeWatcher(mapping.id);
+                            new Notice(`매핑 비활성화됨: ${mapping.externalPath}`);
                         }
                     }
                 }));
@@ -524,6 +577,18 @@ export class MarkdownHijackerSettingTab extends PluginSettingTab {
             }
         });
         modal.open();
+    }
+
+    /**
+     * UUID 생성 함수
+     * @returns 생성된 UUID 문자열
+     */
+    private generateUUID(): string {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            const r = Math.random() * 16 | 0;
+            const v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
     }
 }
 

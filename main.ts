@@ -278,33 +278,53 @@ export default class MarkdownHijacker extends Plugin {
 		for (const mapping of this.settings.folderMappings) {
 			if (!mapping.enabled) continue;
 			
-			try {
-				console.log(`[Markdown Hijacker] 폴더 스캔 중: ${mapping.externalPath}`);
-				
-				// 폴더가 존재하는지 확인
-				if (!fs.existsSync(mapping.externalPath)) {
-					console.error(`[Markdown Hijacker] 외부 폴더가 존재하지 않습니다: ${mapping.externalPath}`);
-					continue;
-				}
-				
-				// 폴더의 모든 마크다운 파일에 대해 프론트매터 추가 처리
-				this.scanFolderAndProcessMarkdownFiles(mapping.externalPath, mapping.externalPath);
-				
-				// 폴더의 모든 마크다운 파일을 Vault로 동기화
-				this.scanFolderAndSyncToVault(mapping);
-				
-				console.log(`[Markdown Hijacker] 폴더 스캔 완료: ${mapping.externalPath}`);
-			} catch (error) {
-				console.error(`[Markdown Hijacker] 폴더 스캔 오류: ${mapping.externalPath} - ${error}`);
-			}
+			this.scanAndSetupMapping(mapping);
 		}
 		
 		console.log('[Markdown Hijacker] 초기 스캔 완료');
 	}
 
-	// 폴더 재귀 스캔 및 마크다운 파일 처리
-	private scanFolderAndProcessMarkdownFiles(folderPath: string, basePath: string) {
+	// 단일 매핑에 대한 스캔 및 설정 (새 함수)
+	async scanAndSetupMapping(mapping: FolderMapping) {
 		try {
+			console.log(`[Markdown Hijacker] 매핑 설정 및 스캔 시작: ${mapping.externalPath}`);
+			
+			// 폴더가 존재하는지 확인
+			if (!fs.existsSync(mapping.externalPath)) {
+				console.error(`[Markdown Hijacker] 외부 폴더가 존재하지 않습니다: ${mapping.externalPath}`);
+				return;
+			}
+			
+			// 1. 워처 설정 (기존 설정 제거 후)
+			if (this.externalWatcher) {
+				// External Watcher 설정
+				console.log(`[Markdown Hijacker] 외부 워처 설정 시작: ${mapping.externalPath}`);
+				const setupResult = this.externalWatcher.setupWatcher(mapping, this.settings.showNotifications);
+				console.log(`[Markdown Hijacker] 외부 워처 설정 ${setupResult ? '성공' : '실패'}: ${mapping.externalPath}`);
+				
+				// 동기화 핸들러 설정
+				console.log(`[Markdown Hijacker] 동기화 핸들러 설정 시작: ${mapping.id}`);
+				this.externalSync.setupSyncHandlers(mapping, this.settings.showNotifications);
+			}
+			
+			// 2. 폴더의 모든 마크다운 파일에 프론트매터 추가 처리
+			console.log(`[Markdown Hijacker] 마크다운 파일 프론트매터 처리 시작: ${mapping.externalPath}`);
+			await this.scanFolderAndProcessMarkdownFiles(mapping.externalPath, mapping.externalPath);
+			
+			// 3. 폴더의 모든 마크다운 파일을 Vault로 동기화
+			console.log(`[Markdown Hijacker] Vault 동기화 시작: ${mapping.externalPath} -> ${mapping.vaultPath}`);
+			await this.scanFolderAndSyncToVault(mapping);
+			
+			console.log(`[Markdown Hijacker] 매핑 설정 및 스캔 완료: ${mapping.externalPath}`);
+		} catch (error) {
+			console.error(`[Markdown Hijacker] 매핑 설정 및 스캔 오류: ${mapping.externalPath} - ${error}`);
+		}
+	}
+
+	// 폴더 재귀 스캔 및 마크다운 파일 처리
+	private async scanFolderAndProcessMarkdownFiles(folderPath: string, basePath: string) {
+		try {
+			console.log(`[Markdown Hijacker] 폴더 스캔 시작: ${folderPath}`);
 			const files = fs.readdirSync(folderPath);
 			
 			for (const file of files) {
@@ -315,18 +335,23 @@ export default class MarkdownHijacker extends Plugin {
 					
 					if (stats.isDirectory()) {
 						// 서브폴더에 대해 재귀 호출
-						this.scanFolderAndProcessMarkdownFiles(fullPath, basePath);
+						await this.scanFolderAndProcessMarkdownFiles(fullPath, basePath);
 					} else if (fullPath.toLowerCase().endsWith('.md')) {
 						// 마크다운 파일인 경우 프론트매터 처리
 						const relativePath = fullPath.substring(basePath.length);
 						console.log(`[Markdown Hijacker] 마크다운 파일 처리: ${fullPath}, 상대 경로: ${relativePath}`);
+						
 						// 외부 워처의 processMarkdownFile 메서드 사용
-						this.externalWatcher.processMarkdownFile(fullPath, basePath, relativePath);
+						if (this.externalWatcher) {
+							const processed = this.externalWatcher.processMarkdownFile(fullPath, basePath, relativePath);
+							console.log(`[Markdown Hijacker] 마크다운 파일 처리 ${processed ? '완료' : '건너뜀'}: ${fullPath}`);
+						}
 					}
 				} catch (err) {
 					console.error(`[Markdown Hijacker] 파일 처리 오류: ${fullPath} - ${err}`);
 				}
 			}
+			console.log(`[Markdown Hijacker] 폴더 스캔 완료: ${folderPath}`);
 		} catch (err) {
 			console.error(`[Markdown Hijacker] 폴더 읽기 오류: ${folderPath} - ${err}`);
 		}
