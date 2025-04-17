@@ -24,7 +24,8 @@ export class FrontMatterUtils {
             mappingId: string,
             vaultPath: string,
             appendFrontMatter?: boolean,
-            frontMatterTemplate?: string
+            frontMatterTemplate?: string,
+            externalPath?: string
         }
     ): { content: string, modified: boolean } {
         console.log(`[FrontMatterUtils] 프론트매터 처리 시작: ${options.vaultPath}`);
@@ -42,19 +43,28 @@ export class FrontMatterUtils {
             return { content, modified: false };
         }
         
-        // 기존 프론트매터에서 originPath 추출
-        const originPath = extractOriginPathFromFrontMatter(content);
+        // 사용할 실제 경로 결정
+        const filePath = options.externalPath || options.vaultPath;
+        console.log(`[FrontMatterUtils] 사용할 경로: ${filePath}`);
         
-        // 이미 originPath가 있고 업데이트가 필요 없는 경우
-        if (originPath && !options.frontMatterTemplate) {
-            console.log(`[FrontMatterUtils] originPath가 이미 존재함: ${originPath}`);
+        // 기존 프론트매터에서 originPath와 vaultLink 확인
+        const originPath = extractOriginPathFromFrontMatter(content);
+        const hasVaultLink = checkHasVaultLink(content, vaultName, options.vaultPath);
+        
+        // originPath는 있지만 vaultLink가 없는 경우 또는 업데이트가 필요한 경우
+        const needsUpdate = !originPath || !hasVaultLink || options.frontMatterTemplate || options.externalPath;
+        
+        if (!needsUpdate) {
+            console.log(`[FrontMatterUtils] 모든 프론트매터 필드가 존재하고 업데이트 필요 없음`);
             return { content, modified: false };
         }
+        
+        console.log(`[FrontMatterUtils] 프론트매터 업데이트 필요: originPath=${!!originPath}, vaultLink=${hasVaultLink}`);
         
         // 프론트매터 추가 또는 업데이트
         const updatedContent = addOriginPathFrontMatter(
             content, 
-            options.vaultPath, 
+            filePath, 
             vaultName, 
             options.vaultPath
         );
@@ -142,6 +152,39 @@ export function extractOriginPathFromFrontMatter(content: string): string | null
 }
 
 /**
+ * Frontmatter에 vaultLink가 있는지 확인하는 함수
+ * @param content 마크다운 컨텐츠
+ * @param vaultName Obsidian Vault 이름
+ * @param vaultPath Vault 내 파일 경로
+ * @returns vaultLink가 있는지 여부
+ */
+export function checkHasVaultLink(content: string, vaultName: string, vaultPath: string): boolean {
+    console.log(`[FrontMatter Utils] vaultLink 확인 시작`);
+    
+    if (!vaultName || !vaultPath) {
+        console.log(`[FrontMatter Utils] vaultName 또는 vaultPath가 없어 vaultLink 확인 불가`);
+        return false;
+    }
+    
+    // Frontmatter 추출을 위한 정규식
+    const frontmatterRegex = /^---\n([\s\S]*?)\n---/;
+    
+    const match = content.match(frontmatterRegex);
+    if (!match) {
+        console.log(`[FrontMatter Utils] Frontmatter가 없음`);
+        return false;
+    }
+    
+    const frontmatter = match[1];
+    
+    // frontmatter에 vaultLink 필드가 있는지만 확인 (정확한 값 비교 없이)
+    const hasVaultLinkField = /vaultLink:\s*.+/.test(frontmatter);
+    console.log(`[FrontMatter Utils] vaultLink 필드 ${hasVaultLinkField ? '있음' : '없음'}`);
+    
+    return hasVaultLinkField;
+}
+
+/**
  * 마크다운 파일에 originPath frontmatter를 추가하는 함수
  * @param content 원본 마크다운 컨텐츠
  * @param filePath 파일 경로
@@ -223,7 +266,7 @@ export function addOriginPathFrontMatter(
         }
         
         // 업데이트된 frontmatter로 교체
-        const updatedContent = content.replace(wholeFm, `---\n${updatedFm.trim()}\n---\n`);
+        const updatedContent = content.replace(wholeFm, `---\n${updatedFm.trim()}\n---`);
         console.log(`[FrontMatter] 프론트매터 업데이트 완료`);
         
         return updatedContent;
@@ -243,11 +286,15 @@ export function addOriginPathFrontMatter(
             newFm += `vaultLink: ${obsidianUri}\n`;
         }
         
-        newFm += `---\n\n`;
-        console.log(`[FrontMatter] 새 프론트매터 생성 완료`);
+        // frontmatter 종료
+        newFm += `---`;
         
-        // 컨텐츠 시작에 새 frontmatter 추가
-        return newFm + content;
+        // 컨텐츠 시작에 새 frontmatter 추가 (원본 컨텐츠가 줄바꿈으로 시작하는지 확인)
+        if (content && content.startsWith('\n')) {
+            return newFm + content;
+        } else {
+            return newFm + (content ? '\n' + content : '');
+        }
     }
 }
 
@@ -289,11 +336,6 @@ export function isFrontMatterUpToDate(
     const fileUri = `file://${encodeURI(filePath).replace(/#/g, '%23').replace(/\s/g, '%20')}`;
     const rootUri = mappingRoot ? `file://${encodeURI(mappingRoot).replace(/#/g, '%23').replace(/\s/g, '%20')}` : '';
     
-    // Obsidian URI 링크 생성
-    const obsidianUri = vaultName && vaultPath 
-        ? `obsidian://open?vault=${encodeURIComponent(vaultName)}&file=${encodeURIComponent(vaultPath)}`
-        : '';
-    
     // 프론트매터 추출
     const frontmatterRegex = /^---\n([\s\S]*?)\n---/;
     const match = content.match(frontmatterRegex);
@@ -304,14 +346,14 @@ export function isFrontMatterUpToDate(
     
     const frontmatter = match[1];
     
-    // 각 필드 확인
+    // 각 필드 확인 - originPath는 정확한 값 비교, vaultLink는 필드 존재 여부만 확인
     const hasOriginPath = frontmatter.includes(`originPath: ${fileUri}`);
     const hasOriginRoot = !rootUri || frontmatter.includes(`originRoot: ${rootUri}`);
-    const hasVaultLink = !obsidianUri || frontmatter.includes(`vaultLink: ${obsidianUri}`);
+    const hasVaultLinkField = /vaultLink:\s*.+/.test(frontmatter);
     
     // 모든 필드가 있고 최신 상태이면 true 반환
-    const isUpToDate = hasOriginPath && hasOriginRoot && hasVaultLink;
-    console.log(`[FrontMatter] 프론트매터 상태: originPath=${hasOriginPath}, originRoot=${hasOriginRoot}, vaultLink=${hasVaultLink}, 최종=${isUpToDate}`);
+    const isUpToDate = hasOriginPath && hasOriginRoot && hasVaultLinkField;
+    console.log(`[FrontMatter] 프론트매터 상태: originPath=${hasOriginPath}, originRoot=${hasOriginRoot}, vaultLink=${hasVaultLinkField}, 최종=${isUpToDate}`);
     
     return isUpToDate;
 } 

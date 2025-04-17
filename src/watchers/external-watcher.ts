@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { FSWatcher } from 'fs';
 import { FolderMapping } from '../../settings';
-import { addOriginPathFrontMatter, isFrontMatterUpToDate } from '../utils/frontmatter-utils';
+import { addOriginPathFrontMatter, isFrontMatterUpToDate, extractOriginPathFromFrontMatter } from '../utils/frontmatter-utils';
 
 // 파일 시스템 변화를 더 안정적으로 감지하기 위해 chokidar 사용 시도
 // 직접 코드에 넣되, chokidar가 없으면 fs.watch로 폴백
@@ -336,46 +336,68 @@ export class ExternalFolderWatcher {
                             
                             // vault 내 상대 경로 계산 (매핑 기반)
                             let vaultPath = '';
+                            let sourceMapping = null;
                             for (const [id, m] of this.mappings.entries()) {
                                 if (fullPath.startsWith(m.externalPath)) {
                                     const relPath = fullPath.substring(m.externalPath.length);
                                     vaultPath = path.join(m.vaultPath, relPath).replace(/\\/g, '/');
+                                    sourceMapping = m;
                                     break;
                                 }
                             }
+
+                            // 기존 프론트매터에서 originPath 추출
+                            const originPath = extractOriginPathFromFrontMatter(content);
                             
-                            // 프론트매터가 최신 상태인지 확인
-                            const isUpToDate = isFrontMatterUpToDate(
-                                content,
-                                fullPath,
-                                vaultName,
-                                vaultPath,
-                                mapping.externalPath
-                            );
+                            // 이 파일이 현재 매핑에 속하는지 확인
+                            const belongsToCurrentMapping = fullPath.startsWith(mapping.externalPath);
+
+                            // originPath가 이미 있고, 현재 매핑과 다른 매핑의 경로를 포함하고 있으면 처리 건너뛰기
+                            const hasOtherMappingPath = originPath && !originPath.includes(mapping.externalPath);
                             
-                            // 최신 상태가 아닌 경우에만 업데이트
-                            if (!isUpToDate) {
-                                console.log(`[External Watcher] 프론트매터 업데이트 필요: ${fullPath}`);
-                                
-                                // 프론트매터 추가
-                                const updatedContent = addOriginPathFrontMatter(
-                                    content, 
+                            console.log(`[External Watcher] 매핑 확인: current=${mapping.id}, 소스=${sourceMapping?.id || '없음'}, 속함=${belongsToCurrentMapping}, originPath=${originPath || '없음'}, 다른매핑=${hasOtherMappingPath}`);
+                            
+                            // 현재 매핑에 속하고, 다른 매핑의 경로를 포함하고 있지 않은 경우에만 프론트매터 업데이트
+                            if (belongsToCurrentMapping && !hasOtherMappingPath) {
+                                // 프론트매터가 최신 상태인지 확인
+                                const isUpToDate = isFrontMatterUpToDate(
+                                    content,
                                     fullPath,
                                     vaultName,
                                     vaultPath,
                                     mapping.externalPath
                                 );
                                 
-                                // 내용이 변경된 경우에만 파일 다시 쓰기
-                                if (content !== updatedContent) {
-                                    console.log(`[External Watcher] 프론트매터 추가/업데이트, 파일 쓰기 시작: ${fullPath}`);
-                                    fs.writeFileSync(fullPath, updatedContent, 'utf8');
-                                    console.log(`[External Watcher] 프론트매터 추가 완료: ${fullPath}`);
+                                // 최신 상태가 아닌 경우에만 업데이트
+                                if (!isUpToDate) {
+                                    console.log(`[External Watcher] 프론트매터 업데이트 필요: ${fullPath}`);
+                                    
+                                    // 프론트매터 추가
+                                    const updatedContent = addOriginPathFrontMatter(
+                                        content, 
+                                        fullPath,
+                                        vaultName,
+                                        vaultPath,
+                                        mapping.externalPath
+                                    );
+                                    
+                                    // 내용이 변경된 경우에만 파일 다시 쓰기
+                                    if (content !== updatedContent) {
+                                        console.log(`[External Watcher] 프론트매터 추가/업데이트, 파일 쓰기 시작: ${fullPath}`);
+                                        fs.writeFileSync(fullPath, updatedContent, 'utf8');
+                                        console.log(`[External Watcher] 프론트매터 추가 완료: ${fullPath} (매핑 ID: ${mapping.id})`);
+                                    } else {
+                                        console.log(`[External Watcher] 내용 변경 없음, 파일 쓰기 생략: ${fullPath}`);
+                                    }
                                 } else {
-                                    console.log(`[External Watcher] 내용 변경 없음, 파일 쓰기 생략: ${fullPath}`);
+                                    console.log(`[External Watcher] 프론트매터가 이미 최신 상태임: ${fullPath}`);
                                 }
                             } else {
-                                console.log(`[External Watcher] 프론트매터가 이미 최신 상태임: ${fullPath}`);
+                                if (hasOtherMappingPath) {
+                                    console.log(`[External Watcher] 이미 다른 매핑 경로가 originPath에 있음, 프론트매터 수정 건너뜀: ${originPath}`);
+                                } else {
+                                    console.log(`[External Watcher] 현재 매핑(${mapping.id})에 속하지 않는 파일, 프론트매터 업데이트 건너뜀: ${fullPath}`);
+                                }
                             }
                         } catch (err) {
                             console.error(`[External Watcher] 프론트매터 처리 오류: ${err.message}\n${err.stack}`);

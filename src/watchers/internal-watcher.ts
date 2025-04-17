@@ -15,6 +15,11 @@ export class InternalWatcher {
     private mappings: Map<string, FolderMapping> = new Map();
     private debugMode: boolean;
     private showNotifications: boolean;
+    
+    // 매핑 캐시 및 이벤트 처리 최적화를 위한 변수
+    private mappingPathCache: Map<string, string[]> = new Map(); // 매핑 ID -> 관련 경로 목록
+    private lastProcessedEvents: Map<string, number> = new Map(); // 파일 경로 -> 마지막 처리 타임스탬프
+    private eventDebounceTime: number = 500; // 중복 이벤트 방지를 위한 디바운스 시간(ms)
 
     constructor(app: App, debugMode: boolean = false) {
         this.app = app;
@@ -90,6 +95,7 @@ export class InternalWatcher {
     public addMapping(mapping: FolderMapping): void {
         console.log(`[Internal Watcher] 📂 매핑 추가: ID=${mapping.id}, 경로=${mapping.vaultPath}`);
         this.mappings.set(mapping.id, mapping);
+        this.updateMappingCache();
     }
 
     /**
@@ -99,6 +105,7 @@ export class InternalWatcher {
     public removeMapping(mappingId: string): void {
         console.log(`[Internal Watcher] 🗑️ 매핑 제거: ID=${mappingId}`);
         this.mappings.delete(mappingId);
+        this.updateMappingCache();
     }
 
     /**
@@ -107,6 +114,56 @@ export class InternalWatcher {
     public removeAllMappings(): void {
         console.log(`[Internal Watcher] 🧹 모든 매핑 제거`);
         this.mappings.clear();
+        this.updateMappingCache();
+    }
+
+    /**
+     * 매핑 캐시 업데이트
+     * 매핑이 변경될 때마다 호출하여 캐시를 최신 상태로 유지
+     */
+    private updateMappingCache(): void {
+        console.log(`[Internal Watcher] 🔄 매핑 캐시 업데이트 시작`);
+        this.mappingPathCache.clear();
+        
+        for (const [id, mapping] of this.mappings.entries()) {
+            const paths = [mapping.vaultPath];
+            this.mappingPathCache.set(id, paths);
+            
+            console.log(`[Internal Watcher] 📂 매핑 캐시 업데이트: ID=${id}, 경로=[${paths.join(', ')}]`);
+        }
+        
+        console.log(`[Internal Watcher] ✅ 매핑 캐시 업데이트 완료: ${this.mappingPathCache.size}개 매핑`);
+    }
+
+    /**
+     * 이벤트 처리 중복 여부 확인
+     * @param filePath 파일 경로
+     * @param eventType 이벤트 타입
+     * @returns 중복 이벤트인지 여부
+     */
+    private isDuplicateEvent(filePath: string, eventType: string): boolean {
+        const eventKey = `${filePath}:${eventType}`;
+        const now = Date.now();
+        const lastTime = this.lastProcessedEvents.get(eventKey) || 0;
+        
+        // 최근에 처리한 이벤트인지 확인
+        if (now - lastTime < this.eventDebounceTime) {
+            console.log(`[Internal Watcher] 🔄 중복 이벤트 감지됨, 건너뜀: ${eventKey}, 간격=${now - lastTime}ms`);
+            return true;
+        }
+        
+        // 새로운 이벤트 기록
+        this.lastProcessedEvents.set(eventKey, now);
+        
+        // 오래된 이벤트 정리 (30초 이상 된 이벤트)
+        const cleanupTime = now - 30000;
+        for (const [key, time] of this.lastProcessedEvents.entries()) {
+            if (time < cleanupTime) {
+                this.lastProcessedEvents.delete(key);
+            }
+        }
+        
+        return false;
     }
 
     /**
@@ -116,11 +173,28 @@ export class InternalWatcher {
      */
     public registerSyncHandler(mapping: FolderMapping, handler: SyncHandler): void {
         console.log(`[Internal Watcher] 🔌 동기화 핸들러 등록: 매핑 ID=${mapping.id}, 경로=${mapping.vaultPath}`);
+        
+        // 같은 ID로 이미 매핑되어 있지 않다면 매핑 추가
+        if (!this.mappings.has(mapping.id)) {
+            this.addMapping(mapping);
+        } else {
+            // 기존 매핑이 있지만 경로가 다르면 업데이트
+            const existingMapping = this.mappings.get(mapping.id);
+            if (existingMapping && existingMapping.vaultPath !== mapping.vaultPath) {
+                console.log(`[Internal Watcher] 🔄 매핑 경로 변경 감지: ${existingMapping.vaultPath} -> ${mapping.vaultPath}`);
+                this.addMapping(mapping);
+            }
+        }
+        
+        // 핸들러 등록
         this.syncHandlers.set(mapping.id, handler);
         
         // 핸들러 등록 확인 (디버깅용)
         const registeredHandler = this.syncHandlers.get(mapping.id);
         console.log(`[Internal Watcher] 🔌 동기화 핸들러 등록 확인: ${registeredHandler ? '성공' : '실패'}`);
+        
+        // 매핑 캐시 업데이트 (매핑이 많을 경우 성능을 위해 여기서는 스킵하고 addMapping에서만 처리할 수도 있음)
+        this.updateMappingCache();
     }
 
     /**
@@ -132,9 +206,11 @@ export class InternalWatcher {
         const filePath = file.path;
         console.log(`[Internal Watcher] 🔍 파일 매핑 확인: ${filePath}`);
         
+        // 캐시된 매핑 정보에서 확인
         for (const [id, mapping] of this.mappings.entries()) {
             // 파일 경로가 매핑된 Vault 폴더로 시작하는지 확인
-            if (filePath.startsWith(mapping.vaultPath + '/') || filePath === mapping.vaultPath) {
+            if (filePath === mapping.vaultPath || 
+                filePath.startsWith(mapping.vaultPath + '/')) {
                 console.log(`[Internal Watcher] ✅ 매핑된 파일 발견: ${filePath} in ${mapping.vaultPath}, 매핑 ID=${id}`);
                 return { mapping, id };
             }
@@ -150,6 +226,11 @@ export class InternalWatcher {
      */
     private handleVaultFileModify(file: TFile): void {
         console.log(`[Internal Watcher] 📄 파일 수정 감지: ${file.path}`);
+        
+        // 중복 이벤트 처리 방지
+        if (this.isDuplicateEvent(file.path, 'modify')) {
+            return;
+        }
         
         // 매핑된 파일인지 확인
         const mappingInfo = this.isMappedFile(file);
@@ -178,6 +259,11 @@ export class InternalWatcher {
     private handleVaultFileCreate(file: TFile): void {
         console.log(`[Internal Watcher] 📄 파일 생성 감지: ${file.path}`);
         
+        // 중복 이벤트 처리 방지
+        if (this.isDuplicateEvent(file.path, 'create')) {
+            return;
+        }
+        
         // 매핑된 파일인지 확인
         const mappingInfo = this.isMappedFile(file);
         if (!mappingInfo) return;
@@ -204,6 +290,11 @@ export class InternalWatcher {
      */
     private handleVaultFileDelete(file: TFile): void {
         console.log(`[Internal Watcher] 📄 파일 삭제 감지: ${file.path}`);
+        
+        // 중복 이벤트 처리 방지
+        if (this.isDuplicateEvent(file.path, 'delete')) {
+            return;
+        }
         
         // 매핑된 파일인지 확인
         const mappingInfo = this.isMappedFile(file);
@@ -232,6 +323,11 @@ export class InternalWatcher {
      */
     private handleVaultFileRename(file: TFile, oldPath: string): void {
         console.log(`[Internal Watcher] 📄 파일 이름 변경 감지: ${oldPath} -> ${file.path}`);
+        
+        // 중복 이벤트 처리 방지
+        if (this.isDuplicateEvent(`${oldPath}->${file.path}`, 'rename')) {
+            return;
+        }
         
         // 매핑된 파일인지 확인 (새 경로 또는 이전 경로 둘 중 하나라도 매핑되면 처리)
         const mappingInfo = this.isMappedFile(file);
@@ -283,6 +379,11 @@ export class InternalWatcher {
     private handleVaultFolderDelete(folder: TFolder): void {
         console.log(`[Internal Watcher] 📁 폴더 삭제 감지: ${folder.path}`);
         
+        // 중복 이벤트 처리 방지
+        if (this.isDuplicateEvent(folder.path, 'deleteDir')) {
+            return;
+        }
+        
         // 매핑된 폴더인지 확인
         const mappingInfo = this.isMappedFolder(folder);
         if (!mappingInfo) return;
@@ -313,6 +414,11 @@ export class InternalWatcher {
      */
     private handleVaultFolderRename(folder: TFolder, oldPath: string): void {
         console.log(`[Internal Watcher] 📁 폴더 이름 변경 감지: ${oldPath} -> ${folder.path}`);
+        
+        // 중복 이벤트 처리 방지
+        if (this.isDuplicateEvent(`${oldPath}->${folder.path}`, 'renameDir')) {
+            return;
+        }
         
         // 매핑된 폴더인지 확인 (새 경로 또는 이전 경로 둘 중 하나라도 매핑되면 처리)
         const mappingInfo = this.isMappedFolder(folder);
@@ -370,7 +476,8 @@ export class InternalWatcher {
         
         for (const [id, mapping] of this.mappings.entries()) {
             // 폴더 경로가 매핑된 Vault 폴더로 시작하는지 확인
-            if (folderPath.startsWith(mapping.vaultPath + '/') || folderPath === mapping.vaultPath) {
+            if (folderPath === mapping.vaultPath || 
+                folderPath.startsWith(mapping.vaultPath + '/')) {
                 console.log(`[Internal Watcher] ✅ 매핑된 폴더 발견: ${folderPath} in ${mapping.vaultPath}, 매핑 ID=${id}`);
                 return { mapping, id };
             }

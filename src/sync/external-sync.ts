@@ -250,8 +250,16 @@ export class ExternalSync {
         console.log(`[External Sync] 📝 파일 생성/수정 처리 시작: ${vaultPath}`);
         
         try {
-            // 프론트매터 처리
-            const processingResult = await this.processFrontMatter(mapping.id, vaultPath, content, vaultExists);
+            // 파일 절대 경로 계산
+            const fileParts = path.basename(vaultPath).split('.');
+            const extname = fileParts.length > 1 ? '.' + fileParts.pop() : '';
+            const filename = fileParts.join('.');
+            const externalPath = path.join(mapping.externalPath, path.relative(mapping.vaultPath, vaultPath));
+            
+            console.log(`[External Sync] 💾 처리할 파일 정보: vault=${vaultPath}, external=${externalPath}`);
+            
+            // 프론트매터 처리 - 항상 추가되도록 설정
+            const processingResult = await this.processFrontMatter(mapping.id, vaultPath, content, vaultExists, externalPath);
             console.log(`[External Sync] 📄 프론트매터 처리 결과: ${processingResult.modified ? '수정됨' : '변경 없음'}`);
             
             const finalContent = processingResult.content;
@@ -283,23 +291,26 @@ export class ExternalSync {
      * @param vaultPath Vault 내부 경로
      * @param content 파일 내용
      * @param fileExists 파일이 이미 존재하는지 여부
+     * @param externalPath 외부 파일 경로 (originPath 설정용)
      * @returns 처리된 내용과 수정 여부
      */
     private async processFrontMatter(
         mappingId: string,
         vaultPath: string,
         content: string,
-        fileExists: boolean
+        fileExists: boolean,
+        externalPath?: string
     ): Promise<{ content: string, modified: boolean }> {
         console.log(`[External Sync] 📄 프론트매터 처리 시작: ${vaultPath}, 매핑 ID: ${mappingId}`);
         
         try {
-            // 프론트매터 처리 로직
+            // 프론트매터 처리 로직 - 항상 추가되도록 설정
             const frontMatterResult = this.frontMatterUtils.processFrontMatter(content, {
                 mappingId,
                 vaultPath,
-                appendFrontMatter: this.settings.appendFrontMatter,
-                frontMatterTemplate: this.settings.frontMatterTemplate
+                appendFrontMatter: true, // 항상 frontmatter 추가
+                frontMatterTemplate: this.settings.frontMatterTemplate,
+                externalPath: externalPath // 외부 파일 경로 전달
             });
             
             console.log(`[External Sync] ✅ 프론트매터 처리 완료: ${vaultPath}, 수정됨: ${frontMatterResult.modified}`);
@@ -315,7 +326,7 @@ export class ExternalSync {
      * 파일 삭제 처리
      */
     private async handleDelete(mapping: FolderMapping, fileName: string): Promise<void> {
-        console.log(`[External Sync] ��️ handleDelete 시작 - 파일명: ${fileName}`);
+        console.log(`[External Sync] 🗑️ handleDelete 시작 - 파일명: ${fileName}`);
         
         // Vault 내부 경로 계산
         const vaultPath = this.calculateVaultPath(mapping, fileName);
