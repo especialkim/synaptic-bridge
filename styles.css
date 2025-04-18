@@ -1,62 +1,178 @@
-/*
-
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
-
-If your plugin does not need CSS, delete this file.
-
-*/
-
-/*
- * MarkdownHijacker Plugin CSS
- */
-
-.markdown-hijacker-container {
-  /* Plugin specific styles will go here */
+/* Default */
+.markdown-hijacker-settings h2{
+  font-size: var(--h2-size);
 }
 
-/* 매핑 리스트 컨테이너 */
-.mapping-list-container {
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 4px;
-  padding: 10px;
-  margin-bottom: 15px;
-  background-color: var(--background-secondary);
+.markdown-hijacker-modal button,
+.markdown-hijacker-settings input[type="checkbox"],
+.markdown-hijacker-settings .checkbox-container,
+.markdown-hijacker-settings summary,
+.markdown-hijacker-settings button{
+  cursor: pointer;
 }
 
-/* 매핑 아이템 */
-.mapping-item {
-  margin-bottom: 15px;
-  padding: 10px;
-  border-radius: 4px;
+.markdown-hijacker-settings .setting-item{
+  border: 0;
+}
+
+.markdown-hijacker-settings button{
+  cursor: pointer;
+}
+
+.setting-section-header{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.vault-folder-children.collapsed {
+	display: none;
+}
+
+.vault-folder-children {
+	display: block;
+}
+
+.vault-folder-toggle,
+.vault-folder-icon {
+	width: 16px;
+	height: 16px;
+}
+
+.sync-connection-item {
+  margin-bottom: 0.7em;
+  padding: 0 1em;
   background-color: var(--background-primary);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--color-base-30);
+  border-radius: 1em;
+  border-right: 1px solid var(--color-base-50);
+  border-bottom: 1px solid var(--color-base-50);
 }
 
-.mapping-item h4 {
-  margin-top: 0;
-  margin-bottom: 10px;
-  border-bottom: 1px solid var(--background-modifier-border);
-  padding-bottom: 5px;
+.sync-connection-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-/* 설정 경고 메시지 */
-.setting-warning {
-  color: var(--text-error);
-  font-size: 12px;
-  margin: 5px 0 15px;
-  padding: 8px;
-  border-radius: 4px;
-  opacity: 0.8;
+.sync-connection-header-left {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
 }
 
-/* 버튼 스타일 */
-.mod-warning {
-  background-color: var(--background-modifier-error) !important;
-  color: var(--text-on-accent) !important;
+.sync-connection-header-left .sync-connection-direction {
+  color: var(--tag-color);
+  background-color: var(--tag-background);
+  border: var(--tag-border-width) solid var(--tag-border-color);
+  font-size: var(--tag-size);
+  font-weight: var(--tag-weight);
+  padding: var(--tag-padding-y) var(--tag-padding-x);
+  border-radius: var(--tag-radius);
 }
 
-/* 폴더 매핑 구분선 */
-.mapping-item hr {
-  margin: 10px 0;
+.sync-connection-header .mod-toggle{
+  padding: 0;
+}
+
+
+.sync-actions-container {
+  display: flex;
+  justify-content: right;
+  padding: 1em 0 0.5em 0;
+}
+
+.sync-actions-container .setting-item{
+  padding: 0.5em 0;
+}
+
+.sync-connection-paths {
+  display: flex;
+  gap: 1em;
+  margin-bottom: 1em;
+}
+
+.sync-connection-header {
+  margin: calc(var(--p-spacing)* 2.5) 0;
+}
+
+.sync-name-display{
+  cursor: text;
+  margin: 0;
+}
+
+.sync-connection-paths > div{
+  flex: 1;
+}
+
+.sync-connection-paths .setting-item {
+  flex-direction: column;
+  padding: 0;
+  width: 100%;
+  gap: 0.2em;
+}
+
+.sync-connection-paths .setting-item > div{
+  width: 100%;
+}
+
+.sync-connection-paths .setting-item > *:first-child {
+  margin-inline-end: 0;
+}
+
+.sync-connection-paths .setting-item-name{
+  line-height: 2;
+}
+
+.sync-connection-paths input {
+  flex: 1;
+}
+
+.sync-connection-paths .setting-item-info{
+  display: flex;
+  gap: 0.3em;
+}
+
+.sync-connection-item summary {
+  color: var(--color-accent);
+  font-size: 0.9em;
+}
+
+.sync-connection-item summary {
+  /* list-style: none;          */
+}
+
+.sync-connection-item summary::-webkit-details-marker {
+  display: none;            /* 웹킷 계열 (Chrome, Edge 등)에서 마커 제거 */
+}
+
+.sync-advanced-content {
+  border: 1px solid var(--divider-color);
+  padding: 0.7em 0.5em 0.5em 0.5em;
+  margin-top: 0.5em;
+  border-radius: 0.7em;
+}
+
+/* Modal */
+.markdown-hijacker-modal h4{
+  margin: 0;
+}
+
+.modal:has(.markdown-hijacker-modal-folder-selection){
+  padding-top: var(--size-4-2);
+}
+
+.modal:has(.markdown-hijacker-modal-folder-selection) .modal-header{
+  margin: 0;
+}
+
+.vault-folder-tree-container {
+  padding: 10px 0px 10px 5px;
+  background-color: var(--background-secondary);
+  border: 1px solid var(--divider-color);
+  border-radius: 10px;
+}
+
+.vault-folder-item:hover {
+  color: var(--color-accent);
 }

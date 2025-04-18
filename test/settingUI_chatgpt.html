@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Markdown Hijacker Settings Mockup</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 20px;
+    }
+    .settings-panel {
+      max-width: 800px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      padding: 20px;
+    }
+    .section {
+      margin-bottom: 30px;
+    }
+    .section h2 {
+      margin-top: 0;
+      border-bottom: 2px solid #ddd;
+      padding-bottom: 6px;
+    }
+    .setting-row {
+      display: flex;
+      align-items: center;
+      margin: 12px 0;
+    }
+    .setting-row label {
+      flex: 1;
+      min-width: 180px;
+    }
+    .setting-row input[type="text"],
+    .setting-row input[type="number"],
+    .setting-row select {
+      flex: 2;
+      padding: 6px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .setting-row input[type="checkbox"] {
+      transform: scale(1.2);
+      margin-left: 8px;
+    }
+    .setting-row button {
+      margin-left: 10px;
+      padding: 6px 12px;
+      border: none;
+      background: #006eff;
+      color: #fff;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .mapping-item {
+      background: #fafafa;
+      border: 1px solid #eee;
+      padding: 12px;
+      border-radius: 4px;
+      margin-bottom: 16px;
+    }
+    .mapping-item h3 {
+      margin: 0 0 10px;
+      font-size: 1.1em;
+    }
+    #addConnectionForm {
+      background: #f0f8ff;
+      border: 1px dashed #a0c4ff;
+      padding: 16px;
+      border-radius: 4px;
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="settings-panel">
+    <h1>Plugin Settings</h1>
+
+    <!-- Global Settings -->
+    <div class="section" id="globalSettings">
+      <h2>Global Settings</h2>
+      <div class="setting-row">
+        <label for="globalSyncToggle" title="Toggle to turn synchronization on or off for all connections">Synchronize All:</label>
+        <input type="checkbox" id="globalSyncToggle" title="Enable or disable synchronization across all connections">
+      </div>
+      <div class="setting-row">
+        <label for="syncInterval" title="Enter how often to check for file changes, in milliseconds">Sync Interval (ms):</label>
+        <input type="number" id="syncInterval" placeholder="e.g. 1000" title="Set synchronization check interval">
+      </div>
+    </div>
+
+    <!-- Sync Connections -->
+    <div class="section" id="syncConnections">
+      <h2>Sync Connections</h2>
+
+      <div id="connectionsList">
+        <div class="mapping-item">
+          <h3>Sample Connection</h3>
+          <div class="setting-row">
+            <label title="Name this sync connection">Connection Name:</label>
+            <input type="text" placeholder="e.g. Research Notes">
+          </div>
+          <div class="setting-row">
+            <label title="Select the folder inside your Vault to sync">Vault Path:</label>
+            <input type="text" placeholder="e.g. Notes/Research">
+          </div>
+          <div class="setting-row">
+            <label title="Select the external folder to synchronize">External Folder:</label>
+            <input type="text" placeholder="/Users/you/projects/docs">
+          </div>
+          <div class="setting-row">
+            <label title="Choose synchronization direction">Sync Direction:</label>
+            <select title="Select one-way or two-way sync">
+              <option>Vault ← External</option>
+              <option>Vault → External</option>
+              <option>Vault ↔ External</option>
+            </select>
+          </div>
+          <div class="setting-row">
+            <label title="Hide system or hidden files from sync">Ignore Hidden Files/Folders:</label>
+            <input type="checkbox">
+          </div>
+          <div class="setting-row">
+            <label title="List folder names to exclude (one per line)">Exclude List:</label>
+            <input type="text" placeholder="e.g. .git, node_modules">
+          </div>
+          <div class="setting-row">
+            <label title="List folder names to always include, overrides exclude list">Required Reference List:</label>
+            <input type="text" placeholder="e.g. assets, docs">
+          </div>
+          <div class="setting-row">
+            <label title="Specify which file extensions to sync (comma-separated)">Extensions:</label>
+            <input type="text" placeholder=".md,.txt">
+          </div>
+          <div class="setting-row">
+            <button title="Trigger synchronization now for this connection">Sync Now</button>
+            <label title="Enable or disable this connection"><input type="checkbox"> Enabled</label>
+            <button title="Remove this connection" style="background:#e53e3e;">Delete</button>
+          </div>
+        </div>
+      </div>
+
+      <button id="addConnectionBtn" title="Add a new folder synchronization connection">+ Add Connection</button>
+
+      <div id="addConnectionForm" style="display:none;">
+        <h3>Add New Connection</h3>
+        <div class="setting-row">
+          <label title="Name your connection">Connection Name:</label>
+          <input type="text">
+        </div>
+        <div class="setting-row">
+          <label>Vault Path:</label>
+          <input type="text" placeholder="Notes/Research">
+        </div>
+        <div class="setting-row">
+          <label>External Folder:</label>
+          <input type="text" placeholder="/Users/you/projects/docs">
+        </div>
+        <div class="setting-row">
+          <label>Sync Direction:</label>
+          <select>
+            <option>Vault ← External</option>
+            <option>Vault → External</option>
+            <option>Vault ↔ External</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <button id="saveConnectionBtn">Save</button>
+          <button id="cancelAddConnectionBtn" style="background:#e53e3e;">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Maintenance -->
+    <div class="section" id="maintenance">
+      <h2>Maintenance</h2>
+      <div class="setting-row">
+        <label for="manualSyncAll" title="Manually trigger synchronization for all connections">Sync All Now:</label>
+        <button id="manualSyncAll">Sync Now</button>
+      </div>
+      <div class="setting-row">
+        <label for="debugModeToggle" title="Enable debug mode to show detailed logs">Debug Mode:</label>
+        <input type="checkbox" id="debugModeToggle">
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('addConnectionBtn').addEventListener('click', () => {
+      document.getElementById('addConnectionForm').style.display = 'block';
+    });
+    document.getElementById('cancelAddConnectionBtn').addEventListener('click', () => {
+      document.getElementById('addConnectionForm').style.display = 'none';
+    });
+    // (Other interactions can be fleshed out later)
+  </script>
+</body>
+</html>

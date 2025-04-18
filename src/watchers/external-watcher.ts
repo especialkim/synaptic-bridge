@@ -20,6 +20,9 @@ try {
 // SyncHandler 타입 정의
 export type SyncHandler = (eventType: string, filename: string, fullPath: string) => void;
 
+// 추가: ExternalSync 클래스 타입 전방 선언
+export class ExternalSync {}
+
 export class ExternalFolderWatcher {
     private app: App;
     private watchers: Map<string, FSWatcher | any> = new Map();
@@ -29,6 +32,8 @@ export class ExternalFolderWatcher {
     private mappings: Map<string, FolderMapping> = new Map();
     // 처리 중인 파일 추적을 위한 변수 추가
     private processingFiles: Set<string> = new Set();
+    // ExternalSync 인스턴스 추가
+    public externalSync: ExternalSync | null = null;
 
     constructor(app: App, debugMode: boolean = false) {
         this.app = app;
@@ -37,6 +42,15 @@ export class ExternalFolderWatcher {
         
         // 콘솔에 직접 로그를 출력하여 생성자가 호출되었는지 확인
         console.log("[External Watcher] 외부 폴더 감시자 초기화됨");
+    }
+
+    /**
+     * ExternalSync 인스턴스 설정
+     * @param sync ExternalSync 인스턴스
+     */
+    public setExternalSync(sync: ExternalSync): void {
+        this.externalSync = sync;
+        console.log("[External Watcher] ExternalSync 인스턴스가 설정됨");
     }
 
     /**

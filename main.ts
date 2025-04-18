@@ -2,8 +2,8 @@ import { Plugin, Notice, TFile, EventRef, Events, App, TFolder, TAbstractFile } 
 import * as fs from 'fs';
 import { FSWatcher } from 'fs';
 import { 
-	MarkdownHijackerSettings, 
-	DEFAULT_SETTINGS, 
+	// MarkdownHijackerSettings, 
+	// DEFAULT_SETTINGS, 
 	MarkdownHijackerSettingTab,
 	FolderMapping
 } from './settings';
@@ -13,6 +13,9 @@ import * as path from 'path';
 import { ExternalSync } from './src/sync/external-sync';
 import { InternalSync } from './src/sync/internal-sync';
 import { VaultSync } from './src/sync/vault-sync';
+import { MarkdownHijackerSettingUI } from 'reSrc/settings/MarkdownHijackerSettingUI';
+import { MarkdownHijackerSettings } from 'reSrc/settings/types';
+import { DEFAULT_SETTINGS } from 'reSrc/settings/MarkdownHijackerSettingUI';
 
 // 이벤트 타입 확장
 declare module 'obsidian' {
@@ -26,20 +29,21 @@ declare module 'obsidian' {
 // This allows us to add new settings without modifying the original file
 declare module './settings' {
 	interface MarkdownHijackerSettings {
-		enableExternalSync: boolean;    // 외부 폴더 동기화 활성화 여부
-		enableVaultSync: boolean;       // Vault 내부 동기화 활성화 여부
-		showNotifications: boolean;     // 알림 표시 여부
+		enableExternalSync: boolean;    
+		enableVaultSync: boolean;       
+		showNotifications: boolean;     
 	}
 }
 
 // Add default values for our new settings
 const ADDITIONAL_DEFAULT_SETTINGS = {
 	enableExternalSync: true,
-	enableVaultSync: false,   // 기본값은 비활성화로 설정
+	enableVaultSync: false,   
 	showNotifications: true
 };
 
 export default class MarkdownHijacker extends Plugin {
+	// settings: MarkdownHijackerSettings;
 	settings: MarkdownHijackerSettings;
 	
 	// 파일 모니터링 관련 객체들
@@ -61,73 +65,106 @@ export default class MarkdownHijacker extends Plugin {
 	async onload() {
 		console.log('MarkdownHijacker plugin loaded');
 		
-		// 설정 로드
-		await this.loadSettings();
-		console.log(`[Markdown Hijacker] 플러그인 설정 로드됨 - 외부 동기화: ${this.settings.enableExternalSync ? '예' : '아니오'}, Vault 동기화: ${this.settings.enableVaultSync ? '예' : '아니오'}, 플러그인 활성화: ${this.settings.pluginEnabled ? '예' : '아니오'}`);
-		
-		// 외부 폴더 감시자 초기화 (먼저 초기화해야 함)
-		console.log('[Markdown Hijacker] 외부 폴더 감시자 초기화 중...');
-		this.externalWatcher = new ExternalFolderWatcher(this.app, this.settings.debugMode);
-		
-		// 내부 Vault 감시자 초기화
-		console.log('[Markdown Hijacker] 내부 Vault 감시자 초기화 중...');
-		this.internalWatcher = new InternalWatcher(this.app, this.settings.debugMode);
-		
-		// Vault 동기화 객체 초기화
-		console.log('[Markdown Hijacker] VaultSync 객체 초기화...');
-		this.vaultSync = new VaultSync(this.app);
-		
-		console.log('[Markdown Hijacker] ExternalSync 객체 초기화...');
-		this.externalSync = new ExternalSync(this, this.externalWatcher, this.vaultSync);
-		
-		console.log('[Markdown Hijacker] InternalSync 객체 초기화...');
-		this.internalSync = new InternalSync(this.app, this.internalWatcher);
-		
-		// 설정 탭 추가
-		this.addSettingTab(new MarkdownHijackerSettingTab(this.app, this));
-		
-		// 상태 바 아이템 설정
-		this.setupStatusBar();
-		
-		// Register the file:open event
-		this.registerEvent(
-			this.app.workspace.on('file-open', (file: TFile | null) => {
-				if (!file) return;
+		// // 설정 로드
 
-				const filePath = file.path;
-				this.handleFileOpen(filePath);
-			})
-		);
-		
-		// 플러그인 기능 활성화 - enableExternalSync 확인 먼저!
-		console.log(`[Markdown Hijacker] 외부 폴더 동기화 설정 확인 중: ${this.settings.enableExternalSync ? '활성화됨' : '비활성화됨'}`);
-		console.log(`[Markdown Hijacker] Vault 내부 동기화 설정 확인 중: ${this.settings.enableVaultSync ? '활성화됨' : '비활성화됨'}`);
-		
-		// 플러그인이 활성화된 경우에만 모니터링 시작
-		if (this.settings.pluginEnabled) {
-			console.log('[Markdown Hijacker] 플러그인 활성화됨 - 모니터링 시작...');
-			this.startMonitoring();
-		} else {
-			console.log('[Markdown Hijacker] 플러그인 비활성화됨 - 모니터링 건너뜀');
-		}
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+		console.log("settings : ", this.settings);
 
-		// 외부 폴더 동기화가 활성화된 경우에만 동기화 모니터링 시작
-		if (this.settings.enableExternalSync) {
-			console.log('[Markdown Hijacker] 외부 폴더 동기화 시작...');
-			this.startMonitoringExternalChanges();
-		} else {
-			console.log('[Markdown Hijacker] 외부 폴더 동기화가 비활성화되어 있습니다. 설정에서 활성화하세요.');
-		}
+		this.addSettingTab(new MarkdownHijackerSettingUI(this.app, this));
+
+		// await this.loadSettings();
+		// console.log(`[Markdown Hijacker] 플러그인 설정 로드됨 - 외부 동기화: ${this.settings.enableExternalSync ? '예' : '아니오'}, Vault 동기화: ${this.settings.enableVaultSync ? '예' : '아니오'}, 플러그인 활성화: ${this.settings.pluginEnabled ? '예' : '아니오'}`);
 		
-		// Vault 내부 동기화가 활성화된 경우에만 내부 변경 감지 시작
-		if (this.settings.enableVaultSync) {
-			console.log('[Markdown Hijacker] Vault 내부 변경 감지 시작...');
-			this.startMonitoringInternalChanges();
-		} else {
-			console.log('[Markdown Hijacker] Vault 내부 동기화가 비활성화되어 있습니다. 설정에서 활성화하세요.');
-		}
+		// // 설정 탭 추가
+		// this.addSettingTab(new MarkdownHijackerSettingTab(this.app, this));
 		
-		console.log('[Markdown Hijacker] 플러그인 로드 완료');
+		// // 디버그 모드 설정
+		// const debugMode = this.settings.debugMode;
+		
+		// // 외부 폴더 감시자 초기화
+		// console.log('[Markdown Hijacker] 외부 폴더 감시자 초기화 중...');
+		// this.externalWatcher = new ExternalFolderWatcher(this.app, debugMode);
+		
+		// // 내부 폴더 감시자 초기화
+		// console.log('[Markdown Hijacker] 내부 Vault 감시자 초기화 중...');
+		// this.internalWatcher = new InternalWatcher(this.app, debugMode);
+		
+		// // Vault 동기화 객체 초기화
+		// console.log('[Markdown Hijacker] VaultSync 객체 초기화...');
+		// this.vaultSync = new VaultSync(this.app);
+		
+		// // 외부 동기화 초기화
+		// console.log('[Markdown Hijacker] ExternalSync 객체 초기화...');
+		// this.externalSync = new ExternalSync(
+		// 	this,
+		// 	this.externalWatcher,
+		// 	undefined,
+		// 	debugMode
+		// );
+		
+		// // 내부 동기화 초기화 (Vault 내부 변경사항을 외부 폴더로 동기화)
+		// console.log('[Markdown Hijacker] InternalSync 객체 초기화...');
+		// this.internalSync = new InternalSync(
+		// 	this.app,
+		// 	this.internalWatcher
+		// );
+		
+		// // 상태 바 아이템 설정
+		// this.setupStatusBar();
+		
+		// // Register the file:open event
+		// this.registerEvent(
+		// 	this.app.workspace.on('file-open', (file: TFile | null) => {
+		// 		if (!file) return;
+
+		// 		const filePath = file.path;
+		// 		this.handleFileOpen(filePath);
+		// 	})
+		// );
+		
+		// // 플러그인 기능 활성화 - enableExternalSync 확인 먼저!
+		// console.log(`[Markdown Hijacker] 외부 폴더 동기화 설정 확인 중: ${this.settings.enableExternalSync ? '활성화됨' : '비활성화됨'}`);
+		// console.log(`[Markdown Hijacker] Vault 내부 동기화 설정 확인 중: ${this.settings.enableVaultSync ? '활성화됨' : '비활성화됨'}`);
+		
+		// // 플러그인이 활성화된 경우에만 모니터링 시작
+		// if (this.settings.pluginEnabled) {
+		// 	console.log('[Markdown Hijacker] 플러그인 활성화됨 - 모니터링 시작...');
+		// 	this.startMonitoring();
+		// } else {
+		// 	console.log('[Markdown Hijacker] 플러그인 비활성화됨 - 모니터링 건너뜀');
+		// }
+
+		// // 외부 폴더 동기화가 활성화된 경우에만 동기화 모니터링 시작
+		// if (this.settings.enableExternalSync) {
+		// 	console.log('[Markdown Hijacker] 외부 폴더 동기화 시작...');
+		// 	this.startMonitoringExternalChanges();
+		// } else {
+		// 	console.log('[Markdown Hijacker] 외부 폴더 동기화가 비활성화되어 있습니다. 설정에서 활성화하세요.');
+		// }
+		
+		// // Vault 내부 동기화가 활성화된 경우에만 내부 변경 감지 시작
+		// if (this.settings.enableVaultSync) {
+		// 	console.log('[Markdown Hijacker] Vault 내부 변경 감지 시작...');
+		// 	this.startMonitoringInternalChanges();
+		// } else {
+		// 	console.log('[Markdown Hijacker] Vault 내부 동기화가 비활성화되어 있습니다. 설정에서 활성화하세요.');
+		// }
+		
+		// // 설정 변경 이벤트 처리
+		// this.registerEvent(
+		// 	(this.app.workspace as any).on('markdown-hijacker:settings-changed', () => {
+		// 		this.updateStatusBar();
+				
+		// 		// 플러그인 상태에 따라 모니터링 시작 또는 중지
+		// 		if (this.settings.pluginEnabled) {
+		// 			this.restartMonitoring();
+		// 		} else {
+		// 			this.stopMonitoring();
+		// 		}
+		// 	})
+		// );
+		
+		// console.log('[Markdown Hijacker] 플러그인 로드 완료');
 	}
 
 	onunload() {
@@ -334,6 +371,17 @@ export default class MarkdownHijacker extends Plugin {
 					const stats = fs.statSync(fullPath);
 					
 					if (stats.isDirectory()) {
+						// 폴더명만 추출
+						const folderName = path.basename(fullPath);
+						
+						// 필터링 로직 적용 - ExternalSync의 shouldProcessFolder 메서드 사용
+						if (this.externalSync) {
+							if (!this.externalSync.shouldProcessFolder(folderName)) {
+								console.log(`[Markdown Hijacker] 필터링 규칙에 따라 폴더 제외: ${folderName}`);
+								continue;
+							}
+						}
+						
 						// 서브폴더에 대해 재귀 호출
 						await this.scanFolderAndProcessMarkdownFiles(fullPath, basePath);
 					} else if (fullPath.toLowerCase().endsWith('.md')) {
@@ -597,5 +645,12 @@ export default class MarkdownHijacker extends Plugin {
 		} catch (error) {
 			console.error(`[Markdown Hijacker] Vault 내부 변경 감지 중지 오류:`, error);
 		}
+	}
+
+	// updateStatusBar 메서드 추가
+	private updateStatusBar() {
+		const statusBarItem = this.addStatusBarItem();
+		statusBarItem.setText('Markdown Hijacker: ' + 
+			(this.settings.pluginEnabled ? '활성화' : '비활성화'));
 	}
 }

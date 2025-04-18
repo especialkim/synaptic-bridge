@@ -1,7 +1,7 @@
 import { App, Notice, TFile, Vault, TFolder } from 'obsidian';
 import { ExternalFolderWatcher, SyncHandler } from '../watchers/external-watcher';
 import { VaultSync } from './vault-sync';
-import { FolderMapping } from '../../settings';
+import { FolderMapping, MarkdownHijackerSettings } from '../../settings';
 import * as fs from 'fs';
 import * as fsp from 'fs/promises';
 import * as path from 'path';
@@ -19,7 +19,7 @@ export class ExternalSync {
     private readonly debugMode: boolean;
     private vault: Vault;
     private frontMatterUtils: FrontMatterUtils;
-    private settings: any; // Plugin 설정
+    private settings: MarkdownHijackerSettings;
 
     constructor(
         plugin: MarkdownHijacker,
@@ -35,6 +35,11 @@ export class ExternalSync {
         this.vault = plugin.app.vault;
         this.frontMatterUtils = new FrontMatterUtils(plugin.app);
         this.settings = plugin.settings;
+        
+        // 워처에 자신의 인스턴스 설정
+        if (this.externalWatcher) {
+            this.externalWatcher.setExternalSync(this);
+        }
         
         // 초기화 로깅
         console.log(`[External Sync] 🔄 ExternalSync 생성됨`);
@@ -309,7 +314,6 @@ export class ExternalSync {
                 mappingId,
                 vaultPath,
                 appendFrontMatter: true, // 항상 frontmatter 추가
-                frontMatterTemplate: this.settings.frontMatterTemplate,
                 externalPath: externalPath // 외부 파일 경로 전달
             });
             
@@ -528,6 +532,96 @@ export class ExternalSync {
             if (this.showNotifications) {
                 new Notice(`폴더 삭제 오류: ${error.message}`);
             }
+        }
+    }
+
+    /**
+     * 경로가 필터링 규칙에 따라 처리되어야 하는지 확인합니다.
+     * 
+     * @param folderName 확인할 폴더 이름
+     * @returns 처리해야 하면 true, 필터링되어야 하면 false
+     */
+    public shouldProcessFolder(folderName: string): boolean {
+        if (!this.settings.excludeFoldersEnabled && !this.settings.includeFoldersEnabled) {
+            // 필터링이 비활성화된 경우 항상 처리
+            return true;
+        }
+        
+        if (this.settings.excludeFoldersEnabled) {
+            // 제외 목록에서 "*" 확인 - 모든 서브폴더 제외
+            const folders = this.settings.excludeFolders.split(/\r?\n/).map(f => f.trim()).filter(f => f);
+            
+            // "*"가 포함되어 있으면 모든 서브폴더 제외
+            if (folders.includes('*')) {
+                return false;
+            }
+            
+            // 특정 폴더 이름이 제외 목록에 있는지 확인
+            return !folders.some(folder => folder === folderName);
+        }
+        
+        if (this.settings.includeFoldersEnabled) {
+            // 포함 목록에서 "*" 확인 - 서브폴더 사용 안함
+            const folders = this.settings.includeFolders.split(/\r?\n/).map(f => f.trim()).filter(f => f);
+            
+            // "*"가 포함되어 있으면 서브폴더 사용 안함
+            if (folders.includes('*')) {
+                return false;
+            }
+            
+            // 특정 폴더 이름이 포함 목록에 있는지 확인
+            return folders.some(folder => folder === folderName);
+        }
+        
+        // 기본적으로 처리
+        return true;
+    }
+
+    /**
+     * 마크다운 파일을 처리합니다.
+     * 
+     * @param filePath 외부 파일 경로
+     * @param basePath 베이스 경로
+     * @param relativePath 상대 경로
+     * @returns 처리 여부
+     */
+    async processMarkdownFile(filePath: string, basePath: string, relativePath: string): Promise<boolean> {
+        try {
+            console.log(`[External Sync] 마크다운 파일 처리: ${filePath}`);
+            
+            // 상대 경로로부터 Vault 파일 경로 계산
+            const relativePart = relativePath.startsWith('/') ? relativePath : '/' + relativePath;
+            const vaultPath = normalizePath(relativePart);
+            
+            // 파일 읽기
+            const content = await fs.promises.readFile(filePath, 'utf8');
+            
+            // 파일 내용 변환 (프론트매터 처리 등)
+            let processedContent = content;
+            
+            // 프론트매터 처리
+            const { content: newContent, modified } = this.frontMatterUtils.processFrontMatter(
+                content,
+                {
+                    mappingId: "external", // 외부 파일에서는 매핑 ID를 특정할 수 없음
+                    vaultPath: vaultPath,
+                    appendFrontMatter: true,
+                    externalPath: filePath
+                }
+            );
+            
+            if (modified) {
+                processedContent = newContent;
+                console.log(`[External Sync] 프론트매터 수정됨: ${filePath}`);
+                
+                // 수정된 내용 파일에 쓰기
+                await fs.promises.writeFile(filePath, processedContent, 'utf8');
+            }
+            
+            return true;
+        } catch (error) {
+            console.error(`[External Sync] 마크다운 파일 처리 오류:`, error);
+            return false;
         }
     }
 }

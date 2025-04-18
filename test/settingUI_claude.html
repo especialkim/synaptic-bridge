@@ -1,0 +1,348 @@
+import { useState } from 'react';
+import { Settings, Folder, FolderSync, FileText, HelpCircle, Plus, Trash2, ArrowRightLeft, ArrowRight, ArrowLeft, RefreshCw, Save, X } from 'lucide-react';
+
+export default function ObsidianExternalMarkdownSyncPlugin() {
+  const [globalSync, setGlobalSync] = useState(true);
+  const [syncInterval, setSyncInterval] = useState("30");
+  const [debugMode, setDebugMode] = useState(false);
+  const [showAddMapping, setShowAddMapping] = useState(false);
+  const [mappings, setMappings] = useState([
+    {
+      id: 1,
+      name: "Work Documents",
+      vaultPath: "Work/Notes",
+      externalPath: "C:/Users/Documents/Work",
+      syncType: "bidirectional",
+      enabled: true,
+      ignoreHidden: true,
+      excludeList: "temp/, draft/",
+      includeList: "",
+      extensions: ".md, .txt"
+    },
+    {
+      id: 2,
+      name: "Research Papers",
+      vaultPath: "Research",
+      externalPath: "D:/Academic/Papers",
+      syncType: "external-to-vault",
+      enabled: true,
+      ignoreHidden: true,
+      excludeList: "",
+      includeList: "important/",
+      extensions: ".md"
+    }
+  ]);
+
+  const getSyncTypeIcon = (type) => {
+    switch(type) {
+      case "external-to-vault": return <ArrowLeft size={16} />;
+      case "vault-to-external": return <ArrowRight size={16} />;
+      case "bidirectional": return <ArrowRightLeft size={16} />;
+      default: return null;
+    }
+  };
+
+  return (
+    <div className="flex flex-col w-full bg-gray-100 p-6 text-gray-800 font-sans min-h-screen">
+      <div className="bg-white rounded-lg shadow p-6 mb-6">
+        <div className="flex items-center mb-4">
+          <Settings className="mr-2" size={20} />
+          <h2 className="text-xl font-bold">External Markdown Sync</h2>
+        </div>
+        <p className="text-sm text-gray-600 mb-6">Synchronize external markdown folders with your Obsidian vault</p>
+
+        {/* Global Settings */}
+        <div className="mb-8">
+          <div className="flex items-center mb-3">
+            <h3 className="text-lg font-medium">Global Settings</h3>
+            <div className="ml-2 text-gray-500 cursor-help">
+              <HelpCircle size={16} />
+            </div>
+          </div>
+          
+          <div className="bg-gray-50 p-4 rounded-md">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center">
+                <span className="font-medium">Global Synchronization</span>
+                <div className="ml-2 text-gray-500 cursor-help">
+                  <HelpCircle size={14} title="Enable or disable all synchronization operations" />
+                </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  className="sr-only peer"
+                  checked={globalSync}
+                  onChange={() => setGlobalSync(!globalSync)}
+                />
+                <div className="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+              </label>
+            </div>
+            
+            <div className="flex items-center">
+              <div className="flex flex-col flex-grow">
+                <div className="flex items-center">
+                  <span className="font-medium">Sync Interval (minutes)</span>
+                  <div className="ml-2 text-gray-500 cursor-help">
+                    <HelpCircle size={14} title="Time between automatic synchronization operations" />
+                  </div>
+                </div>
+                <input 
+                  type="text" 
+                  className="mt-1 block w-24 px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                  value={syncInterval}
+                  onChange={(e) => setSyncInterval(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Sync Connections */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center">
+              <h3 className="text-lg font-medium">Sync Connections</h3>
+              <div className="ml-2 text-gray-500 cursor-help">
+                <HelpCircle size={16} title="Manage folder connections between Obsidian vault and external locations" />
+              </div>
+            </div>
+            <button 
+              className="flex items-center bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded-md text-sm"
+              onClick={() => setShowAddMapping(true)}
+            >
+              <Plus size={16} className="mr-1" />
+              Add Connection
+            </button>
+          </div>
+          
+          <div className="bg-gray-50 p-4 rounded-md mb-4">
+            {showAddMapping && (
+              <div className="bg-white p-4 rounded-md shadow-md mb-4 border-l-4 border-purple-500">
+                <div className="flex justify-between items-center mb-3">
+                  <h4 className="font-medium">Add New Connection</h4>
+                  <button 
+                    className="text-gray-500 hover:text-gray-700"
+                    onClick={() => setShowAddMapping(false)}
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+                
+                <div className="space-y-3 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Connection Name</label>
+                    <input 
+                      type="text"
+                      placeholder="My Connection"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Vault Path</label>
+                    <div className="flex">
+                      <input 
+                        type="text"
+                        placeholder="Folder/Subfolder"
+                        className="flex-grow px-3 py-2 border border-gray-300 rounded-l-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                      />
+                      <button className="bg-gray-200 px-3 py-2 border border-gray-300 rounded-r-md">
+                        <Folder size={16} />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">External Path</label>
+                    <div className="flex">
+                      <input 
+                        type="text"
+                        placeholder="C:/Users/Documents/"
+                        className="flex-grow px-3 py-2 border border-gray-300 rounded-l-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                      />
+                      <button className="bg-gray-200 px-3 py-2 border border-gray-300 rounded-r-md">
+                        <Folder size={16} />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Sync Type</label>
+                    <select className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500">
+                      <option value="bidirectional">Bidirectional (Vault ↔ External)</option>
+                      <option value="external-to-vault">One-way (Vault ← External)</option>
+                      <option value="vault-to-external">One-way (Vault → External)</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div className="flex justify-end space-x-2">
+                  <button 
+                    className="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-md text-sm"
+                    onClick={() => setShowAddMapping(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-md text-sm flex items-center">
+                    <Save size={14} className="mr-1" />
+                    Save
+                  </button>
+                </div>
+              </div>
+            )}
+            
+            <div className="space-y-4">
+              {mappings.map(mapping => (
+                <div key={mapping.id} className="bg-white p-4 rounded-md shadow-sm border-l-4 border-purple-500">
+                  <div className="flex justify-between items-center mb-3">
+                    <div className="flex items-center">
+                      <h4 className="font-medium">{mapping.name}</h4>
+                      <div className="ml-2 bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full text-xs flex items-center">
+                        {getSyncTypeIcon(mapping.syncType)}
+                        <span className="ml-1">
+                          {mapping.syncType === "bidirectional" ? "Bidirectional" : 
+                           mapping.syncType === "external-to-vault" ? "External → Vault" : 
+                           "Vault → External"}
+                        </span>
+                      </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        className="sr-only peer"
+                        checked={mapping.enabled}
+                      />
+                      <div className="w-9 h-5 bg-gray-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                    </label>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4 text-sm mb-3">
+                    <div>
+                      <div className="flex items-center text-gray-500 mb-1">
+                        <Folder size={14} className="mr-1" />
+                        <span>Vault Path</span>
+                      </div>
+                      <div className="font-mono bg-gray-50 p-1 rounded">{mapping.vaultPath}</div>
+                    </div>
+                    
+                    <div>
+                      <div className="flex items-center text-gray-500 mb-1">
+                        <FolderSync size={14} className="mr-1" />
+                        <span>External Path</span>
+                      </div>
+                      <div className="font-mono bg-gray-50 p-1 rounded truncate">{mapping.externalPath}</div>
+                    </div>
+                  </div>
+                  
+                  <div className="mb-3">
+                    <details className="text-sm">
+                      <summary className="cursor-pointer font-medium text-purple-700 mb-2 flex items-center">
+                        Advanced Settings
+                      </summary>
+                      <div className="pl-2 space-y-2 pt-2">
+                        <div className="flex items-center">
+                          <input 
+                            type="checkbox" 
+                            id={`ignore-hidden-${mapping.id}`}
+                            checked={mapping.ignoreHidden}
+                            className="h-4 w-4 text-purple-600 rounded"
+                          />
+                          <label htmlFor={`ignore-hidden-${mapping.id}`} className="ml-2">
+                            Ignore Hidden Files and Folders
+                          </label>
+                        </div>
+                        
+                        <div>
+                          <label className="block mb-1">Excluded Paths (ignored if empty)</label>
+                          <input 
+                            type="text"
+                            value={mapping.excludeList}
+                            className="w-full px-2 py-1 border border-gray-300 rounded-md text-xs"
+                            placeholder="temp/, draft/, private/"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block mb-1">Required Paths (overrides exclusions)</label>
+                          <input 
+                            type="text"
+                            value={mapping.includeList}
+                            className="w-full px-2 py-1 border border-gray-300 rounded-md text-xs"
+                            placeholder="important/, must-sync/"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block mb-1">File Extensions</label>
+                          <input 
+                            type="text"
+                            value={mapping.extensions}
+                            className="w-full px-2 py-1 border border-gray-300 rounded-md text-xs"
+                            placeholder=".md, .txt"
+                          />
+                        </div>
+                      </div>
+                    </details>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <button className="text-xs flex items-center text-purple-700 hover:text-purple-900">
+                      <RefreshCw size={14} className="mr-1" />
+                      Sync Now
+                    </button>
+                    <button className="text-xs flex items-center text-red-600 hover:text-red-800">
+                      <Trash2 size={14} className="mr-1" />
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Maintenance */}
+        <div>
+          <div className="flex items-center mb-3">
+            <h3 className="text-lg font-medium">Maintenance</h3>
+            <div className="ml-2 text-gray-500 cursor-help">
+              <HelpCircle size={16} title="Plugin maintenance options" />
+            </div>
+          </div>
+          
+          <div className="bg-gray-50 p-4 rounded-md">
+            <div className="flex justify-between items-center mb-4">
+              <button className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-md text-sm flex items-center">
+                <RefreshCw size={16} className="mr-2" />
+                Sync All Connections
+              </button>
+              
+              <div className="flex items-center">
+                <span className="mr-3 font-medium">Debug Mode</span>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    className="sr-only peer"
+                    checked={debugMode}
+                    onChange={() => setDebugMode(!debugMode)}
+                  />
+                  <div className="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                </label>
+              </div>
+            </div>
+            
+            {debugMode && (
+              <div className="bg-gray-700 text-gray-200 p-3 rounded-md font-mono text-xs h-24 overflow-y-auto">
+                <div>[INFO] Plugin initialized</div>
+                <div>[INFO] Found 2 sync connections</div>
+                <div>[INFO] Last automatic sync: 5 minutes ago</div>
+                <div>[INFO] Next automatic sync in 25 minutes</div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -1,123 +1,59 @@
-import { App, PluginSettingTab, Setting, Notice, TFolder, TAbstractFile, setIcon, DropdownComponent, TextComponent, Modal } from 'obsidian';
-import { v4 as uuidv4 } from 'uuid';
-import MarkdownHijacker from './main';
+import { App, PluginSettingTab, Setting, Notice, TFolder, TAbstractFile } from 'obsidian';
 import * as fs from 'fs';
+import MarkdownHijacker from '../main';
+import { FolderMapping, DEFAULT_SETTINGS } from './types';
+import { FolderSelectionModal } from './modals/folder-selection-modal';
+import { ExternalFolderPathModal } from './modals/external-folder-path-modal';
+import { generateUUID } from './utils/uuid-utils';
 
-// 폴더 매핑 인터페이스
-export interface FolderMapping {
-    id: string;            // 고유 ID (UUID)
-    vaultPath: string;     // Vault 내 상대 경로
-    externalPath: string;  // 외부 폴더 절대 경로
-    enabled: boolean;      // 활성화 여부
-}
-
-// 플러그인 설정 인터페이스
-export interface MarkdownHijackerSettings {
-    pluginEnabled: boolean;         // 플러그인 전체 활성화 여부
-    folderMappings: FolderMapping[];// 폴더 매핑 목록
-    
-    excludeFoldersEnabled: boolean; // 제외할 서브폴더 옵션 활성화 여부
-    excludeFolders: string;         // 제외할 서브폴더 목록 (콤마 구분)
-    
-    includeFoldersEnabled: boolean; // 포함할 서브폴더 옵션 활성화 여부
-    includeFolders: string;         // 포함할 서브폴더 목록 (콤마 구분)
-    
-    syncInterval: number;           // 동기화 확인 간격 (밀리초)
-    debugMode: boolean;             // 디버그 모드 활성화 여부
-    enableExternalSync: boolean;     // 외부 폴더 동기화 활성화 여부
-    showNotifications: boolean;      // 변경 알림 표시 여부
-    enableVaultSync: boolean;        // 내부 변경 동기화 활성화 여부
-}
-
-// 기본 설정값 정의
-export const DEFAULT_SETTINGS: MarkdownHijackerSettings = {
-    pluginEnabled: false,
-    folderMappings: [],
-    excludeFoldersEnabled: false,
-    excludeFolders: "",
-    includeFoldersEnabled: false,
-    includeFolders: "",
-    syncInterval: 1000,    // 1초
-    debugMode: false,
-    enableExternalSync: false,
-    showNotifications: true,
-    enableVaultSync: false
-}
-
-// 설정 탭 클래스
+/**
+ * 플러그인 설정 탭 클래스
+ * 사용자가 플러그인 설정을 변경할 수 있는 UI를 제공합니다.
+ */
 export class MarkdownHijackerSettingTab extends PluginSettingTab {
+    /** 플러그인 인스턴스 */
     plugin: MarkdownHijacker;
 
+    /**
+     * 생성자
+     * @param app Obsidian 앱 인스턴스
+     * @param plugin 플러그인 인스턴스
+     */
     constructor(app: App, plugin: MarkdownHijacker) {
         super(app, plugin);
         this.plugin = plugin;
     }
 
+    /**
+     * 설정 탭이 표시될 때 호출됩니다.
+     * 모든 설정 UI 요소를 구성합니다.
+     */
     display(): void {
         const { containerEl } = this;
         containerEl.empty();
 
         containerEl.createEl('h2', { text: 'Markdown Hijacker 설정' });
 
-        new Setting(containerEl)
-            .setName('플러그인 활성화')
-            .setDesc('플러그인을 활성화 또는 비활성화합니다.')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.pluginEnabled)
-                .onChange(async (value) => {
-                    this.plugin.settings.pluginEnabled = value;
-                    await this.plugin.saveSettings();
-                    
-                    // 토글 상태에 따라 워처 설정 또는 제거
-                    if (value) {
-                        this.plugin.startMonitoringExternalChanges();
-                    } else {
-                        this.plugin.stopMonitoringExternalChanges();
-                    }
-                }));
+        // 플러그인 활성화 토글
+        this.addPluginEnableToggle(containerEl);
 
         // 폴더 매핑 섹션
-        containerEl.createEl('h3', { text: '폴더 매핑' });
-        
-        const mappingContainer = containerEl.createDiv('mapping-container');
-        
-        // 기존 매핑 항목 표시
-        this.plugin.settings.folderMappings.forEach(mapping => {
-            this.createMappingElement(mappingContainer, mapping);
-        });
-        
-        // 새 매핑 추가 버튼
-        new Setting(containerEl)
-            .setName('폴더 매핑 추가')
-            .setDesc('외부 폴더와 Vault 폴더 간의 새 매핑을 추가합니다.')
-            .addButton(button => button
-                .setButtonText('+ 새 매핑 추가')
-                .setCta()
-                .onClick(async () => {
-                    // 새 매핑 생성
-                    const newMapping: FolderMapping = {
-                        id: this.generateUUID(),
-                        externalPath: '',
-                        vaultPath: '',
-                        enabled: false
-                    };
-                    
-                    // 설정에 추가
-                    this.plugin.settings.folderMappings.push(newMapping);
-                    await this.plugin.saveSettings();
-                    
-                    // 설정 UI 새로고침
-                    this.display();
-                    
-                    // 새 매핑이 활성화되고 경로가 설정된 후 초기 스캔을 수행하도록 안내
-                    new Notice('새 매핑이 추가되었습니다. 경로를 설정한 후 동기화가 시작됩니다.');
-                }));
+        this.addFolderMappingSection(containerEl);
 
+        // 서브폴더 필터링 섹션
         this.addSubfolderFilterSection(containerEl);
+
+        // 외부 동기화 설정 섹션
         this.addExternalSyncSection(containerEl);
+
+        // 고급 설정 섹션
         this.addAdvancedSettingsSection(containerEl);
     }
 
+    /**
+     * 플러그인 활성화 토글 설정을 추가합니다.
+     * @param containerEl 컨테이너 요소
+     */
     private addPluginEnableToggle(containerEl: HTMLElement): void {
         new Setting(containerEl)
             .setName('플러그인 활성화')
@@ -138,6 +74,10 @@ export class MarkdownHijackerSettingTab extends PluginSettingTab {
                 }));
     }
 
+    /**
+     * 폴더 매핑 설정 섹션을 추가합니다.
+     * @param containerEl 컨테이너 요소
+     */
     private addFolderMappingSection(containerEl: HTMLElement): void {
         containerEl.createEl('h3', {text: '폴더 매핑 설정'});
         
@@ -159,7 +99,7 @@ export class MarkdownHijackerSettingTab extends PluginSettingTab {
                     .onClick(async () => {
                         // 새 매핑 생성
                         const newMapping: FolderMapping = {
-                            id: this.generateUUID(),
+                            id: generateUUID(),
                             externalPath: '',
                             vaultPath: '',
                             enabled: false
@@ -178,11 +118,16 @@ export class MarkdownHijackerSettingTab extends PluginSettingTab {
         }
     }
     
+    /**
+     * 개별 매핑 설정 요소를 생성합니다.
+     * @param container 컨테이너 요소
+     * @param mapping 폴더 매핑 객체
+     */
     private createMappingElement(container: HTMLElement, mapping: FolderMapping): void {
         const mappingEl = container.createDiv('mapping-item');
         mappingEl.createEl('h4', {text: '폴더 매핑'});
         
-        // Vault 경로 설정 (드롭다운 제거, 폴더 선택 버튼만 사용)
+        // Vault 경로 설정
         new Setting(mappingEl)
             .setName('Vault 경로')
             .setDesc('Vault 내 상대 경로를 입력하거나 폴더 선택 버튼을 사용하세요.')
@@ -202,7 +147,7 @@ export class MarkdownHijackerSettingTab extends PluginSettingTab {
                 })
             );
         
-        // 외부 경로 설정 (폴더 선택 기능 추가)
+        // 외부 경로 설정
         new Setting(mappingEl)
             .setName('외부 폴더 경로')
             .setDesc('동기화할 외부 폴더의 절대 경로를 입력하세요.')
@@ -272,6 +217,10 @@ export class MarkdownHijackerSettingTab extends PluginSettingTab {
         mappingEl.createEl('hr');
     }
 
+    /**
+     * 서브폴더 필터링 설정 섹션을 추가합니다.
+     * @param containerEl 컨테이너 요소
+     */
     private addSubfolderFilterSection(containerEl: HTMLElement): void {
         containerEl.createEl('h3', {text: '서브폴더 필터링 설정'});
         
@@ -285,8 +234,6 @@ export class MarkdownHijackerSettingTab extends PluginSettingTab {
                     // 제외와 포함 옵션이 동시에 활성화되지 않도록 함
                     if (value && this.plugin.settings.includeFoldersEnabled) {
                         this.plugin.settings.includeFoldersEnabled = false;
-                        // UI 갱신을 위해 display()를 다시 호출하는 것이 이상적이지만, 
-                        // 간단함을 위해 알림만 표시
                         new Notice('포함 옵션이 비활성화되었습니다.');
                     }
                     
@@ -296,23 +243,14 @@ export class MarkdownHijackerSettingTab extends PluginSettingTab {
         
         new Setting(containerEl)
             .setName('제외할 서브폴더 목록')
-            .setDesc('동기화에서 제외할 서브폴더 이름을 줄바꿈으로 구분하여 입력하세요. "*"를 입력하면 서브폴더를 사용하지 않습니다.')
-            .addTextArea(text => {
-                text
-                    .setPlaceholder('예:\n.git\nnode_modules\n.obsidian\n* (서브폴더 사용 안함)')
-                    .setValue(this.plugin.settings.excludeFolders)
-                    .onChange(async (value) => {
-                        this.plugin.settings.excludeFolders = value;
-                        await this.plugin.saveSettings();
-                    });
-                
-                // 텍스트 영역 스타일 조정
-                const textAreaEl = text.inputEl;
-                textAreaEl.style.minHeight = '100px';
-                textAreaEl.style.width = '100%';
-                
-                return text;
-            })
+            .setDesc('동기화에서 제외할 서브폴더 이름을 콤마(,)로 구분하여 입력하세요.')
+            .addTextArea(text => text
+                .setPlaceholder('예: .git, node_modules, .obsidian')
+                .setValue(this.plugin.settings.excludeFolders)
+                .onChange(async (value) => {
+                    this.plugin.settings.excludeFolders = value;
+                    await this.plugin.saveSettings();
+                }))
             .setDisabled(!this.plugin.settings.excludeFoldersEnabled);
         
         // 포함할 서브폴더 설정
@@ -334,23 +272,14 @@ export class MarkdownHijackerSettingTab extends PluginSettingTab {
         
         new Setting(containerEl)
             .setName('포함할 서브폴더 목록')
-            .setDesc('동기화할 서브폴더 이름을 줄바꿈으로 구분하여 입력하세요. "*"를 입력하면 서브폴더를 사용하지 않습니다.')
-            .addTextArea(text => {
-                text
-                    .setPlaceholder('예:\ndocs\nnotes\nresearch\n* (서브폴더 사용 안함)')
-                    .setValue(this.plugin.settings.includeFolders)
-                    .onChange(async (value) => {
-                        this.plugin.settings.includeFolders = value;
-                        await this.plugin.saveSettings();
-                    });
-                
-                // 텍스트 영역 스타일 조정
-                const textAreaEl = text.inputEl;
-                textAreaEl.style.minHeight = '100px';
-                textAreaEl.style.width = '100%';
-                
-                return text;
-            })
+            .setDesc('동기화할 서브폴더 이름을 콤마(,)로 구분하여 입력하세요.')
+            .addTextArea(text => text
+                .setPlaceholder('예: docs, notes, research')
+                .setValue(this.plugin.settings.includeFolders)
+                .onChange(async (value) => {
+                    this.plugin.settings.includeFolders = value;
+                    await this.plugin.saveSettings();
+                }))
             .setDisabled(!this.plugin.settings.includeFoldersEnabled);
         
         // 경고 메시지
@@ -360,10 +289,14 @@ export class MarkdownHijackerSettingTab extends PluginSettingTab {
         });
     }
 
+    /**
+     * 외부 동기화 설정 섹션을 추가합니다.
+     * @param containerEl 컨테이너 요소
+     */
     private addExternalSyncSection(containerEl: HTMLElement): void {
         containerEl.createEl('h3', {text: '외부 폴더 동기화 설정'});
         
-        // Enable external sync toggle
+        // 외부 폴더 동기화 활성화 토글
         new Setting(containerEl)
             .setName('외부 폴더 동기화 활성화')
             .setDesc('외부 폴더의 변경사항을 실시간으로 감지하고 동기화합니다.')
@@ -382,7 +315,7 @@ export class MarkdownHijackerSettingTab extends PluginSettingTab {
                     }
                 }));
         
-        // Enable vault sync toggle (내부 변경 동기화 옵션 추가)
+        // 내부 변경 동기화 활성화 토글
         new Setting(containerEl)
             .setName('내부 변경 동기화 활성화')
             .setDesc('Vault 내부의 변경사항을 감지하고 외부 폴더와 동기화합니다.')
@@ -401,7 +334,7 @@ export class MarkdownHijackerSettingTab extends PluginSettingTab {
                     }
                 }));
         
-        // Show notifications toggle
+        // 변경 알림 표시 토글
         new Setting(containerEl)
             .setName('변경 알림 표시')
             .setDesc('파일이 변경되면 알림을 표시합니다.')
@@ -413,6 +346,10 @@ export class MarkdownHijackerSettingTab extends PluginSettingTab {
                 }));
     }
 
+    /**
+     * 고급 설정 섹션을 추가합니다.
+     * @param containerEl 컨테이너 요소
+     */
     private addAdvancedSettingsSection(containerEl: HTMLElement): void {
         containerEl.createEl('h3', {text: '고급 설정'});
         
@@ -463,21 +400,10 @@ export class MarkdownHijackerSettingTab extends PluginSettingTab {
                 }));
     }
 
-    // 모든 폴더 가져오기 헬퍼 메서드
-    private getAllFolders(): TFolder[] {
-        const folders: TFolder[] = [];
-        const files = this.app.vault.getAllLoadedFiles();
-        
-        files.forEach((file: TAbstractFile) => {
-            if (file instanceof TFolder) {
-                folders.push(file);
-            }
-        });
-        
-        return folders;
-    }
-    
-    // 폴더 브라우저 모달 표시
+    /**
+     * Vault 내 폴더 선택 모달을 표시합니다.
+     * @param mapping 현재 수정 중인 폴더 매핑
+     */
     private showFolderBrowserModal(mapping: FolderMapping) {
         const modal = new FolderSelectionModal(this.app, this.plugin, (folderPath: string) => {
             mapping.vaultPath = folderPath;
@@ -487,33 +413,33 @@ export class MarkdownHijackerSettingTab extends PluginSettingTab {
         modal.open();
     }
 
-    // 외부 폴더 선택 대화상자 표시 함수
+    /**
+     * 외부 폴더 선택 대화상자를 표시합니다.
+     * 시스템의 네이티브 폴더 선택 대화상자를 사용하며,
+     * 실패 시 수동 입력 모달로 대체합니다.
+     * 
+     * @param mapping 현재 수정 중인 폴더 매핑
+     */
     private async openFolderSelectionDialog(mapping: FolderMapping): Promise<void> {
         try {
-            // @electron/remote 패키지를 통한 접근 방식 - 최신 Electron 버전과 호환됨
-            // @ts-ignore
-            const electron = require('electron');
+            // @electron/remote 패키지를 통한 접근
             // @ts-ignore
             const remote = require('@electron/remote');
             
             if (!remote || !remote.dialog) {
-                // Electron API를 사용할 수 없는 경우 수동 입력으로 대체
                 throw new Error('Electron API를 사용할 수 없습니다.');
             }
             
             // 플랫폼 확인
             // @ts-ignore
             const platform = process.platform;
-            const isWindows = platform === 'win32';
             const isMac = platform === 'darwin';
-            const isLinux = platform === 'linux';
             
-            // 플랫폼별 특수 옵션 설정
+            // 대화상자 옵션 설정
             const options: any = {
                 properties: ['openDirectory', 'createDirectory'],
                 title: '동기화할 외부 폴더 선택',
                 buttonLabel: '선택',
-                // 플랫폼별 메시지 조정
                 message: isMac ? '동기화할 외부 폴더를 선택하세요 (새 폴더 생성 가능)' : undefined
             };
             
@@ -559,24 +485,6 @@ export class MarkdownHijackerSettingTab extends PluginSettingTab {
         } catch (error) {
             console.error('폴더 선택 대화상자 오류:', error);
             
-            // Obsidian의 내장 파일 브라우저 사용 시도
-            try {
-                // @ts-ignore - Obsidian의 비공개 API 사용
-                if (this.app.vault.adapter.basePath && typeof this.app.vault.adapter.showDirectoryPicker === 'function') {
-                    new Notice('Obsidian 파일 선택기를 사용합니다.');
-                    // @ts-ignore
-                    const selectedPath = await this.app.vault.adapter.showDirectoryPicker();
-                    if (selectedPath) {
-                        mapping.externalPath = selectedPath;
-                        await this.plugin.saveSettings();
-                        this.display();
-                        return;
-                    }
-                }
-            } catch (obsidianError) {
-                console.error('Obsidian 파일 선택기 오류:', obsidianError);
-            }
-            
             // 대체 방법: 사용자에게 경로 직접 입력 요청
             new Notice('시스템 폴더 선택기를 불러올 수 없습니다. 수동으로 경로를 입력해주세요.');
             
@@ -585,7 +493,12 @@ export class MarkdownHijackerSettingTab extends PluginSettingTab {
         }
     }
     
-    // 수동 경로 입력을 위한 모달 표시
+    /**
+     * 수동 경로 입력을 위한 모달을 표시합니다.
+     * 시스템 파일 선택 대화상자를 사용할 수 없는 경우 대체 수단으로 사용됩니다.
+     * 
+     * @param mapping 현재 수정 중인 폴더 매핑
+     */
     private showManualPathInputModal(mapping: FolderMapping): void {
         const modal = new ExternalFolderPathModal(this.app, mapping.externalPath, async (path) => {
             if (path) {
@@ -596,179 +509,4 @@ export class MarkdownHijackerSettingTab extends PluginSettingTab {
         });
         modal.open();
     }
-
-    /**
-     * UUID 생성 함수
-     * @returns 생성된 UUID 문자열
-     */
-    private generateUUID(): string {
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-            const r = Math.random() * 16 | 0;
-            const v = c === 'x' ? r : (r & 0x3 | 0x8);
-            return v.toString(16);
-        });
-    }
-}
-
-// 폴더 선택 모달 클래스
-export class FolderSelectionModal extends Modal {
-    private plugin: MarkdownHijacker;
-    private callback: (folderPath: string) => void;
-    
-    constructor(app: App, plugin: MarkdownHijacker, callback: (folderPath: string) => void) {
-        super(app);
-        this.plugin = plugin;
-        this.callback = callback;
-    }
-    
-    onOpen() {
-        const { contentEl } = this;
-        contentEl.empty();
-        
-        contentEl.createEl('h2', { text: 'Vault 폴더 선택' });
-        
-        const folderList = contentEl.createDiv('folder-list');
-        folderList.style.maxHeight = '400px';
-        folderList.style.overflow = 'auto';
-        
-        // 모든 폴더 가져오기
-        const folders = this.getAllFolders();
-        
-        // 폴더 트리 구성
-        const rootFolder = folders.find(f => f.path === '/') || folders[0];
-        this.createFolderTreeItem(folderList, rootFolder, '/');
-        
-        // 취소 버튼
-        const buttonContainer = contentEl.createDiv('modal-button-container');
-        buttonContainer.style.display = 'flex';
-        buttonContainer.style.justifyContent = 'flex-end';
-        buttonContainer.style.marginTop = '15px';
-        
-        const cancelButton = buttonContainer.createEl('button', { text: '취소' });
-        cancelButton.addEventListener('click', () => {
-            this.close();
-        });
-    }
-    
-    onClose() {
-        const { contentEl } = this;
-        contentEl.empty();
-    }
-    
-    private getAllFolders(): TFolder[] {
-        const folders: TFolder[] = [];
-        const files = this.app.vault.getAllLoadedFiles();
-        
-        files.forEach((file: TAbstractFile) => {
-            if (file instanceof TFolder) {
-                folders.push(file);
-            }
-        });
-        
-        return folders;
-    }
-    
-    private createFolderTreeItem(container: HTMLElement, folder: TFolder, path: string) {
-        const itemEl = container.createDiv('folder-tree-item');
-        itemEl.style.padding = '4px 0';
-        itemEl.style.cursor = 'pointer';
-        
-        // 들여쓰기 및 아이콘
-        const indentation = path.split('/').length - 1;
-        const itemContent = itemEl.createDiv('folder-item-content');
-        itemContent.style.paddingLeft = `${indentation * 20}px`;
-        
-        const iconContainer = itemContent.createSpan('folder-icon');
-        setIcon(iconContainer, 'folder');
-        iconContainer.style.marginRight = '6px';
-        
-        // 폴더 이름
-        const nameEl = itemContent.createSpan({ text: folder.name || '/' });
-        
-        // 클릭 이벤트
-        itemEl.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.callback(folder.path);
-            this.close();
-        });
-        
-        // 호버 효과
-        itemEl.addEventListener('mouseenter', () => {
-            itemEl.style.backgroundColor = 'var(--background-modifier-hover)';
-        });
-        
-        itemEl.addEventListener('mouseleave', () => {
-            itemEl.style.backgroundColor = '';
-        });
-        
-        // 하위 폴더 처리
-        const subfolders = folder.children
-            .filter(child => child instanceof TFolder)
-            .sort((a, b) => a.name.localeCompare(b.name));
-            
-        subfolders.forEach(subfolder => {
-            if (subfolder instanceof TFolder) {
-                this.createFolderTreeItem(container, subfolder, folder.path + '/' + subfolder.name);
-            }
-        });
-    }
-}
-
-// 수동 경로 입력을 위한 모달 클래스
-class ExternalFolderPathModal extends Modal {
-    private path: string;
-    private onSubmit: (path: string) => void;
-    
-    constructor(app: App, initialPath: string, onSubmit: (path: string) => void) {
-        super(app);
-        this.path = initialPath;
-        this.onSubmit = onSubmit;
-    }
-    
-    onOpen() {
-        const { contentEl } = this;
-        
-        contentEl.createEl('h2', { text: '외부 폴더 경로 입력' });
-        
-        // 설명 추가
-        contentEl.createEl('p', { 
-            text: '동기화할 외부 폴더의 절대 경로를 입력하세요.' 
-        });
-        
-        // 경로 입력 필드
-        const inputContainer = contentEl.createDiv();
-        inputContainer.style.margin = '10px 0';
-        
-        const pathInput = new TextComponent(inputContainer)
-            .setPlaceholder('예: /Users/username/projects/docs')
-            .setValue(this.path);
-        
-        pathInput.inputEl.style.width = '100%';
-        
-        // 버튼 컨테이너
-        const buttonContainer = contentEl.createDiv();
-        buttonContainer.style.display = 'flex';
-        buttonContainer.style.justifyContent = 'flex-end';
-        buttonContainer.style.marginTop = '20px';
-        
-        // 취소 버튼
-        const cancelButton = buttonContainer.createEl('button', { text: '취소' });
-        cancelButton.style.marginRight = '10px';
-        cancelButton.addEventListener('click', () => {
-            this.close();
-        });
-        
-        // 확인 버튼
-        const confirmButton = buttonContainer.createEl('button', { text: '확인' });
-        confirmButton.classList.add('mod-cta');
-        confirmButton.addEventListener('click', () => {
-            this.onSubmit(pathInput.getValue());
-            this.close();
-        });
-    }
-    
-    onClose() {
-        const { contentEl } = this;
-        contentEl.empty();
-    }
-}
+} 
