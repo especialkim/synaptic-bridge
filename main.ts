@@ -13,9 +13,8 @@ import * as path from 'path';
 import { ExternalSync } from './src/sync/external-sync';
 import { InternalSync } from './src/sync/internal-sync';
 import { VaultSync } from './src/sync/vault-sync';
-import { MarkdownHijackerSettingUI } from 'reSrc/settings/MarkdownHijackerSettingUI';
-import { MarkdownHijackerSettings } from 'reSrc/settings/types';
-import { DEFAULT_SETTINGS } from 'reSrc/settings/MarkdownHijackerSettingUI';
+import { MarkdownHijackerSettingUI, MarkdownHijackerSettings, DEFAULT_SETTINGS } from 'reSrc/settings';
+import { StatusBarManager } from 'reSrc/statusBar/StatusBarManager';
 
 // 이벤트 타입 확장
 declare module 'obsidian' {
@@ -62,15 +61,26 @@ export default class MarkdownHijacker extends Plugin {
 	private externalSync: ExternalSync;
 	private internalSync: InternalSync;
 
+	/* Rebuilding */
+	statusBar: StatusBarManager;
+
 	async onload() {
 		console.log('MarkdownHijacker plugin loaded');
 		
-		// // 설정 로드
-
+		/* Load Settings */
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-		console.log("settings : ", this.settings);
 
+		/* Setting UI */
 		this.addSettingTab(new MarkdownHijackerSettingUI(this.app, this));
+
+		/* Status Bar */
+		this.statusBar = new StatusBarManager(this);
+
+		/* Main */
+		this.app.workspace.onLayoutReady(() => {
+			
+		});
+		
 
 		// await this.loadSettings();
 		// console.log(`[Markdown Hijacker] 플러그인 설정 로드됨 - 외부 동기화: ${this.settings.enableExternalSync ? '예' : '아니오'}, Vault 동기화: ${this.settings.enableVaultSync ? '예' : '아니오'}, 플러그인 활성화: ${this.settings.pluginEnabled ? '예' : '아니오'}`);
@@ -191,13 +201,13 @@ export default class MarkdownHijacker extends Plugin {
 	setupStatusBar() {
 		const statusBarItem = this.addStatusBarItem();
 		statusBarItem.setText('Markdown Hijacker: ' + 
-			(this.settings.pluginEnabled ? '활성화' : '비활성화'));
+			(this.settings.enableGlobalSync ? '활성화' : '비활성화'));
 		
 		// 설정이 변경될 때마다 상태 바 업데이트
 		this.registerEvent(
 			this.app.workspace.on('markdown-hijacker:settings-changed', () => {
 				statusBarItem.setText('Markdown Hijacker: ' + 
-					(this.settings.pluginEnabled ? '활성화' : '비활성화'));
+					(this.settings.enableGlobalSync ? '활성화' : '비활성화'));
 			})
 		);
 	}

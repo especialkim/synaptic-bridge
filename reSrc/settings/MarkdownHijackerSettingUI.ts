@@ -1,15 +1,56 @@
 import MarkdownHijacker from "../../main";
-import { App, PluginSettingTab, setIcon, Setting } from "obsidian";
-import { MarkdownHijackerSettings, SyncType } from "./types";
+import { App, Notice, PluginSettingTab, setIcon, Setting } from "obsidian";
+import { FolderConnectionSettings, MarkdownHijackerSettings, SyncType } from "./types";
 import { openFolderSelectionDialog } from "../Utils/openFolderSelectionDialog";
 import { openVaultFolderSelectionDialog } from "reSrc/Utils/openVaultFolderSelectionDialog";
 import { RemoveConnectionModal } from "./modal";
+import { disableSync, validateConnectionPaths } from "./utils";
 
 export const DEFAULT_SETTINGS : MarkdownHijackerSettings = {
     enableGlobalSync: false,
     syncInterval: 2000,
     debugMode: false,
 	connections: []
+}
+
+export const DEFAULT_CONNECTIONS : FolderConnectionSettings = {
+	id: crypto.randomUUID(),
+	name: 'Untitled',
+	vaultPath: '',
+	externalPath: '',
+	syncType: SyncType.bidirectional,
+	ignoreHiddenFiles: true,
+	excludeFolders: [
+		'node_modules',
+		'dist',
+		'build',
+		'src',
+		'lib',
+		'app',
+		'public',
+		'assets',
+		'utils',
+		'util',
+		'types',
+		'type',
+		'hooks',
+		'hook',
+		'components',
+		'component',
+		'styles',
+		'style',
+		'pages',
+		'routes',
+		'route',
+		'layouts',
+		'layout',
+		'modules',
+		'module',
+		'config'
+	],
+	includeFolders: [],
+	extensions: ['.md'],
+	syncEnabled: false
 }
 
 export class MarkdownHijackerSettingUI extends PluginSettingTab {
@@ -41,6 +82,7 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 				.onChange(value => {
 					this.plugin.settings.enableGlobalSync = value;
 					this.plugin.saveSettings();
+					this.plugin.statusBar.update();
 				}));
 
 		new Setting(globalSection)
@@ -66,18 +108,8 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 				.setCta()
 				.onClick(async () => {
 					console.log('Clicked New Connection');
-					this.plugin.settings.connections.push({
-						id: crypto.randomUUID(),
-						name: 'Untitled',
-						vaultPath: '',
-						externalPath: '',
-						syncType: SyncType.bidirectional,
-						ignoreHiddenFiles: true,
-						excludeFolders: [],
-						includeFolders: [],
-						extensions: ['.md'],
-						syncEnabled: false
-					});
+					const newConnection = { ...DEFAULT_CONNECTIONS, id: crypto.randomUUID() };
+					this.plugin.settings.connections.push(newConnection);
 					await this.plugin.saveSettings();
 					this.display();
 				}));
@@ -116,12 +148,25 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 			itemHeaderLeft.createEl('span', { text: connection.syncType, cls: 'sync-connection-direction' });
 
 			new Setting(itemHeaderRight)
-				.addToggle(toggle => toggle
-					.setValue(connection.syncEnabled)
-					.onChange(value => {
-						connection.syncEnabled = value;
-						this.plugin.saveSettings();
-					}));
+				.setName('Sync Status')
+				.addToggle(toggle => 
+					toggle
+						.setValue(connection.syncEnabled)
+						.onChange(async (value) => {
+							if (value === true) {
+								const result = validateConnectionPaths(connection);
+								if (!result.valid) {
+									connection.syncEnabled = false;
+									toggle.setValue(false);
+									new Notice(result.message!);
+									await this.plugin.saveSettings();
+									return;
+								}
+							}
+							connection.syncEnabled = value;
+							await this.plugin.saveSettings();
+						})
+				);
 
 			/* Item Body */
 			const itemBody = connectionItem.createDiv({ cls: 'sync-connection-body' });
@@ -143,15 +188,16 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 					.setValue(connection.vaultPath)
 					.onChange(value => {
 						connection.vaultPath = value;
+						disableSync(connection, itemHeaderRight);
 						this.plugin.saveSettings();
 					}))
 				.addButton(btn => btn
-					.setButtonText('폴더 선택')
+					.setButtonText('📂')
 					.onClick(async () => {
 						const selected = await openVaultFolderSelectionDialog(this.app);
-						console.log(`Selected Vault Path: ${selected}`);
 						if (selected) {
 							connection.vaultPath = selected;
+							disableSync(connection, itemHeaderRight);
 							await this.plugin.saveSettings();
 							this.display();
 						}
@@ -169,17 +215,18 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 			externalSetting
 				.addText(text => text
 					.setValue(connection.externalPath)
-					.onChange(value => {
+					.onChange(async value => {
 						connection.externalPath = value;
-						this.plugin.saveSettings();
+						disableSync(connection, itemHeaderRight);
+						await this.plugin.saveSettings(); // ← await 추가
 					}))
 				.addButton(button => button
-					.setButtonText('폴더 선택')
+					.setButtonText('📂')
 					.onClick(async () => {
 						const path = await openFolderSelectionDialog();
-						console.log(`Selected External Path: ${path}`);
 						if (path) {
 							connection.externalPath = path;
+							disableSync(connection, itemHeaderRight);
 							await this.plugin.saveSettings();
 							this.display();
 						}
@@ -199,6 +246,7 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 					.setValue(connection.syncType) // 기본값 설정
 					.onChange(async value => {
 						connection.syncType = value as SyncType;
+						disableSync(connection, itemHeaderRight);
 						await this.plugin.saveSettings();
 			
 						// 타이틀 옆 syncType 텍스트만 직접 업데이트
@@ -214,6 +262,7 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 				.addToggle(toggle => toggle
 					.setValue(connection.ignoreHiddenFiles)
 					.onChange(value => {
+						disableSync(connection, itemHeaderRight);
 						connection.ignoreHiddenFiles = value;
 						this.plugin.saveSettings();
 					}));
@@ -224,6 +273,7 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 				.addText(text => text
 					.setValue(connection.excludeFolders.join(','))
 					.onChange(value => {
+						disableSync(connection, itemHeaderRight);
 						connection.excludeFolders = value.split(',').map(folder => folder.trim());
 						this.plugin.saveSettings();
 					}));
@@ -234,6 +284,7 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 				.addText(text => text
 					.setValue(connection.includeFolders.join(','))
 					.onChange(value => {
+						disableSync(connection, itemHeaderRight);
 						connection.includeFolders = value.split(',').map(folder => folder.trim());
 						this.plugin.saveSettings();
 					}));
@@ -244,6 +295,7 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 				.addText(text => text
 					.setValue(connection.extensions.join(','))
 					.onChange(value => {
+						disableSync(connection, itemHeaderRight);
 						connection.extensions = value.split(',').map(ext => ext.trim());
 						this.plugin.saveSettings();
 					}));

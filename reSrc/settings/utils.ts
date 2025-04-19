@@ -1,10 +1,39 @@
-import { Plugin } from "obsidian";
-import { DEFAULT_SETTINGS, ADDITIONAL_DEFAULT_SETTINGS } from "./MarkdownHijackerSettingUI";
-
+import { Notice, Plugin } from "obsidian";
+import { DEFAULT_SETTINGS } from "./MarkdownHijackerSettingUI";
+import { FolderConnectionSettings } from "./types";
+import { isExistDirectory } from "reSrc/Utils/pathUtils";
 
 export async function loadSettings(plugin: Plugin) {
     // Merge both default settings objects
-    const mergedDefaults = Object.assign({}, DEFAULT_SETTINGS, ADDITIONAL_DEFAULT_SETTINGS);
-    const settings = Object.assign({}, mergedDefaults, await plugin.loadData());
+    const settings = Object.assign({}, DEFAULT_SETTINGS, await plugin.loadData());
     return settings;
+}
+
+export function validateConnectionPaths(connection: FolderConnectionSettings): { valid: boolean, message?: string } {
+	const externalValid = isExistDirectory(connection.externalPath);
+	if (!externalValid) {
+		return { valid: false, message: "External Path is not valid" };
+	}
+
+	const vaultValid = connection.vaultPath.trim() !== '';
+	if (!vaultValid) {
+		return { valid: false, message: "Please specify a valid Vault path." };
+	}
+
+	return { valid: true };
+}
+
+/**
+ * 연결의 동기화를 비활성화하고 UI 토글 상태도 false로 반영
+ */
+export function disableSync(connection: FolderConnectionSettings, itemHeaderRight: HTMLElement): void {
+    if(connection.syncEnabled) {
+        connection.syncEnabled = false;
+        
+        const checkboxContainer = itemHeaderRight.querySelector('.checkbox-container');
+        if (checkboxContainer?.classList.contains('is-enabled')) {
+            checkboxContainer.classList.remove('is-enabled');
+        }
+        new Notice("Sync disabled. Re-enable after changes.");
+    }
 }

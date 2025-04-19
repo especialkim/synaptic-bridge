@@ -93,7 +93,7 @@
 }
 
 .sync-connection-header {
-  margin: calc(var(--p-spacing)* 2.5) 0;
+  margin: 1.5em 0;
 }
 
 .sync-name-display{
@@ -131,6 +131,7 @@
 .sync-connection-paths .setting-item-info{
   display: flex;
   gap: 0.3em;
+  font-weight: bold;
 }
 
 .sync-connection-item summary {
