@@ -70,17 +70,23 @@
   - [x] 충돌 감지 및 해결 메커니즘
   - [x] 동기화 방향 설정 옵션
 
-### 2025-04-19
+## 2025-04-23 : Rebuilding 시작
 
-- [ ] Connection Item Sync Toggle 버튼 ISSUE
-  - disable sync 실행후 Toggle이 한번만에 False -> True 가 되지 않는 현상있음
-- [ ] CSS 미세 커스터마이징  
-  - 아이콘 정렬, 텍스트 간격, 폴더명 입력창 라벨 위치 등
-  - 화면 균형 + 조작 편의성 최종 정리
-- [ ] External Watcher
-- [ ] Internal Watcher
+- [ ] SyncExternalManager
+  - [x] Method : handleAddFile
+  - [x] Method : handleChangeFile
+    - [x] handleUserChangeMd
+    - [x] handleUserChangeNotMd
+  - [x] Method : handleDeleteFile
+  - [x] Method : handleAddFolder
+  - [x] Method : handleDeleteFolder
+
+  
+
 
 ## 미래 앞으로 할 작업
+- [ ] Frontmatter 처리
+  - [ ] 양방향 링크 등록하기
 - [ ] 버그 수정
   - [ ] 서브폴더 필터링 "*" 기능 수정 (모든 서브폴더를 정상적으로 제외하도록)
   - [ ] 필터링 로직이 실제 폴더 스캔 과정에 올바르게 적용되는지 확인
@@ -99,3 +105,40 @@
   - [ ] 배치 처리 및 스케줄링
   - [ ] 상태 모니터링 및 로그 뷰어
   - [ ] 사용자 인터페이스 고급 기능 
+- [ ] 파일 이동 및 파일명 변경 감시 할 수 있다.(미래 최적화 작업 필요시 고려사항)
+  - mtime 비교
+  - content 비교
+  - content를 비교하면 파일 이동인지 파일명 변경인지 감시 가능
+    - bidirectionalReconcile 옵션 필요없이 지능화된 옵션 사용가능
+- [ ] {not markdown file}.meta.yaml.md  -> This is the end of Synaptic Route
+  - markdown이 아닌 모든 파일에 대해 의미 기반 메타데이터를 별도로 기록  
+  - Obsidian에서 열 수 있도록 `.md` 확장자 사용  
+  - YAML frontmatter와 함께 `![]()`로 원본 파일 연결 
+  - Obsidian에서 미리보기가 되지 않는 파일은 컨텐츠를 넣어버림
+    - ms-word
+    - pdf
+      - python : `PyMuPDF` + `pdfplumber`
+        - 
+    - pptx
+    - epub
+    - html
+    - json
+    - csv
+    - txt
+    - ico
+    - font
+    - image
+    - mp3
+      - 가사
+      - voice to text
+    - mp4
+    - url
+      - webpage
+      - youtube
+    - 한글로 번역된 문서로 가공?
+      - 무료로 사용가능한 것도 존재함
+    - ※ OCR은 파이썬 생태계가 품질 속도 몇에서 압도적으로 Chatgpt가 말함 이거 하나 만들어 놓으면 쉽게 잘 쓸 듯
+    - 전용도구 Python을 만들어보자. 이거 Tool 로 사용할 수 있어. 나중에는 나만의 MCP로 확장가능
+  - 사이드바나 팝업으로 metadata 입력하게 하고 입력값있으면 자동으로 .meta.yaml.md 파일 생성
+  - Devonthink, EagleFiler, KeepIt 같은 전통적인 정보 관리 툴들이 놓치고 있는 ‘의미 기반 연결’을 Obsidian 안에서 구현
+- [ ] 옵시디언은 마크다운 편집기로써 최고이기 때문

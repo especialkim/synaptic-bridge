@@ -8,13 +8,14 @@ import {
 	FolderMapping
 } from './settings';
 import { ExternalFolderWatcher } from './src/watchers/external-watcher';
-import { InternalWatcher } from './src/watchers/internal-watcher';
+import { InternalWatcher } from './reSrc/watchers/InternalWatcher';
 import * as path from 'path';
 import { ExternalSync } from './src/sync/external-sync';
 import { InternalSync } from './src/sync/internal-sync';
 import { VaultSync } from './src/sync/vault-sync';
 import { MarkdownHijackerSettingUI, MarkdownHijackerSettings, DEFAULT_SETTINGS } from 'reSrc/settings';
 import { StatusBarManager } from 'reSrc/statusBar/StatusBarManager';
+import { ExternalWatcher } from 'reSrc/watchers/ExternalWatcher';
 
 // 이벤트 타입 확장
 declare module 'obsidian' {
@@ -26,20 +27,20 @@ declare module 'obsidian' {
 
 // Extend the settings interface with new properties for external sync
 // This allows us to add new settings without modifying the original file
-declare module './settings' {
-	interface MarkdownHijackerSettings {
-		enableExternalSync: boolean;    
-		enableVaultSync: boolean;       
-		showNotifications: boolean;     
-	}
-}
+// declare module './settings' {
+// 	interface MarkdownHijackerSettings {
+// 		enableExternalSync: boolean;    
+// 		enableVaultSync: boolean;       
+// 		showNotifications: boolean;     
+// 	}
+// }
 
 // Add default values for our new settings
-const ADDITIONAL_DEFAULT_SETTINGS = {
-	enableExternalSync: true,
-	enableVaultSync: false,   
-	showNotifications: true
-};
+// const ADDITIONAL_DEFAULT_SETTINGS = {
+// 	enableExternalSync: true,
+// 	enableVaultSync: false,   
+// 	showNotifications: true
+// };
 
 export default class MarkdownHijacker extends Plugin {
 	// settings: MarkdownHijackerSettings;
@@ -55,7 +56,7 @@ export default class MarkdownHijacker extends Plugin {
 	monitoringExternalChanges: boolean = false;
 	monitoringInternalChanges: boolean = false;
 	watchers: Map<string, fs.FSWatcher> = new Map();
-	externalWatcher: ExternalFolderWatcher;
+	// externalWatcher: ExternalFolderWatcher;
 	internalWatcher: InternalWatcher;
 	private vaultSync: VaultSync;
 	private externalSync: ExternalSync;
@@ -63,6 +64,7 @@ export default class MarkdownHijacker extends Plugin {
 
 	/* Rebuilding */
 	statusBar: StatusBarManager;
+	externalWatcher: ExternalWatcher;
 
 	async onload() {
 		console.log('MarkdownHijacker plugin loaded');
@@ -78,15 +80,26 @@ export default class MarkdownHijacker extends Plugin {
 
 		/* Main */
 		this.app.workspace.onLayoutReady(() => {
-			
+			this.externalWatcher = new ExternalWatcher(this.app, this);
+			this.externalWatcher.setupWatcher();
+			this.internalWatcher = new InternalWatcher(this.app, this);
+			this.internalWatcher.setupWatcher();
 		});
 		
+		/* 설정 변경 이벤트 리스너 등록 */
+		this.registerEvent(
+			this.app.workspace.on('markdown-hijacker:settings-changed', () => {
+				console.log('markdown-hijacker:settings-changed 설정 변경 이벤트 발생');
+				if (this.externalWatcher) {
+					this.externalWatcher.setupWatcher();
+				}
+				if (this.internalWatcher) {
+					this.internalWatcher.setupWatcher();
+				}
+			})
+		);
 
-		// await this.loadSettings();
-		// console.log(`[Markdown Hijacker] 플러그인 설정 로드됨 - 외부 동기화: ${this.settings.enableExternalSync ? '예' : '아니오'}, Vault 동기화: ${this.settings.enableVaultSync ? '예' : '아니오'}, 플러그인 활성화: ${this.settings.pluginEnabled ? '예' : '아니오'}`);
-		
-		// // 설정 탭 추가
-		// this.addSettingTab(new MarkdownHijackerSettingTab(this.app, this));
+
 		
 		// // 디버그 모드 설정
 		// const debugMode = this.settings.debugMode;
@@ -179,488 +192,494 @@ export default class MarkdownHijacker extends Plugin {
 
 	onunload() {
 		console.log('MarkdownHijacker plugin unloaded');
-		// 모니터링 중지
-		this.stopMonitoring();
-		this.stopMonitoringExternalChanges();
-		this.stopMonitoringInternalChanges();
-	}
-	
-	// 설정 로드
-	async loadSettings() {
-		// Merge both default settings objects
-		const mergedDefaults = Object.assign({}, DEFAULT_SETTINGS, ADDITIONAL_DEFAULT_SETTINGS);
-		this.settings = Object.assign({}, mergedDefaults, await this.loadData());
-	}
-
-	// 설정 저장
-	async saveSettings() {
-		await this.saveData(this.settings);
-	}
-	
-	// 상태 바 설정
-	setupStatusBar() {
-		const statusBarItem = this.addStatusBarItem();
-		statusBarItem.setText('Markdown Hijacker: ' + 
-			(this.settings.enableGlobalSync ? '활성화' : '비활성화'));
 		
-		// 설정이 변경될 때마다 상태 바 업데이트
-		this.registerEvent(
-			this.app.workspace.on('markdown-hijacker:settings-changed', () => {
-				statusBarItem.setText('Markdown Hijacker: ' + 
-					(this.settings.enableGlobalSync ? '활성화' : '비활성화'));
-			})
-		);
-	}
-	
-	// 모니터링 시작
-	startMonitoring() {
-		this.log('모니터링 시작');
-		
-		// Vault 이벤트 등록
-		this.registerVaultEvents();
-		
-		// 외부 폴더 워처 설정
-		this.setupWatchers();
-		
-		// 초기 스캔 및 동기화
-		this.initialScan();
-	}
-	
-	// 모니터링 중지
-	stopMonitoring() {
-		this.log('모니터링 중지');
-		
-		// 외부 폴더 워처 제거
-		this.removeAllWatchers();
-		
-		// Vault 이벤트 정리
-		this.cleanupVaultEvents();
-	}
-	
-	// 모니터링 재시작
-	restartMonitoring() {
-		if (this.settings.pluginEnabled) {
-			this.stopMonitoring();
-			this.startMonitoring();
+		// Make sure to stop the watcher when the plugin is unloaded
+		if (this.externalWatcher) {
+			this.externalWatcher.stopWatching();
 		}
+		
+		// Clean up any other resources
+		// this.stopMonitoring();
+		// this.stopMonitoringExternalChanges();
+		// this.stopMonitoringInternalChanges();
 	}
 	
-	// Vault 이벤트 등록
-	registerVaultEvents() {
-		this.log('Vault 이벤트 등록');
-		// Vault 이벤트는 internal-watcher에서 처리함
-	}
+	// // 설정 로드
+	// async loadSettings() {
+	// 	// Merge both default settings objects
+	// 	const mergedDefaults = Object.assign({}, DEFAULT_SETTINGS, ADDITIONAL_DEFAULT_SETTINGS);
+	// 	this.settings = Object.assign({}, mergedDefaults, await this.loadData());
+	// }
+
+	// // 설정 저장
+	// async saveSettings() {
+	// 	await this.saveData(this.settings);
+	// }
 	
-	// Vault 이벤트 정리
-	cleanupVaultEvents() {
-		// vaultEventRefs에 등록된 모든 이벤트 정리
-		this.vaultEventRefs.forEach(ref => this.app.vault.offref(ref));
-		this.vaultEventRefs = [];
-	}
+	// // 상태 바 설정
+	// setupStatusBar() {
+	// 	const statusBarItem = this.addStatusBarItem();
+	// 	statusBarItem.setText('Markdown Hijacker: ' + 
+	// 		(this.settings.enableGlobalSync ? '활성화' : '비활성화'));
+		
+	// 	// 설정이 변경될 때마다 상태 바 업데이트
+	// 	this.registerEvent(
+	// 		this.app.workspace.on('markdown-hijacker:settings-changed', () => {
+	// 			statusBarItem.setText('Markdown Hijacker: ' + 
+	// 				(this.settings.enableGlobalSync ? '활성화' : '비활성화'));
+	// 		})
+	// 	);
+	// }
 	
-	// 외부 폴더 워처 설정
-	setupWatchers() {
-		// 활성화된 폴더 매핑에 대해 워처 설정
-		this.settings.folderMappings
-			.filter(mapping => mapping.enabled)
-			.forEach(mapping => this.setupWatcher(mapping));
-	}
+	// // 모니터링 시작
+	// startMonitoring() {
+	// 	this.log('모니터링 시작');
+		
+	// 	// Vault 이벤트 등록
+	// 	this.registerVaultEvents();
+		
+	// 	// 외부 폴더 워처 설정
+	// 	this.setupWatchers();
+		
+	// 	// 초기 스캔 및 동기화
+	// 	this.initialScan();
+	// }
+	
+	// // 모니터링 중지
+	// stopMonitoring() {
+	// 	this.log('모니터링 중지');
+		
+	// 	// 외부 폴더 워처 제거
+	// 	this.removeAllWatchers();
+		
+	// 	// Vault 이벤트 정리
+	// 	this.cleanupVaultEvents();
+	// }
+	
+	// // 모니터링 재시작
+	// restartMonitoring() {
+	// 	if (this.settings.pluginEnabled) {
+	// 		this.stopMonitoring();
+	// 		this.startMonitoring();
+	// 	}
+	// }
+	
+	// // Vault 이벤트 등록
+	// registerVaultEvents() {
+	// 	this.log('Vault 이벤트 등록');
+	// 	// Vault 이벤트는 internal-watcher에서 처리함
+	// }
+	
+	// // Vault 이벤트 정리
+	// cleanupVaultEvents() {
+	// 	// vaultEventRefs에 등록된 모든 이벤트 정리
+	// 	this.vaultEventRefs.forEach(ref => this.app.vault.offref(ref));
+	// 	this.vaultEventRefs = [];
+	// }
+	
+	// // 외부 폴더 워처 설정
+	// setupWatchers() {
+	// 	// 활성화된 폴더 매핑에 대해 워처 설정
+	// 	this.settings.folderMappings
+	// 		.filter(mapping => mapping.enabled)
+	// 		.forEach(mapping => this.setupWatcher(mapping));
+	// }
 	
 	// 단일 폴더 워처 설정
-	setupWatcher(mapping: FolderMapping) {
-		try {
-			// 이미 존재하는 워처가 있으면 제거
-			this.removeWatcher(mapping.id);
+	// setupWatcher(mapping: FolderMapping) {
+	// 	try {
+	// 		// 이미 존재하는 워처가 있으면 제거
+	// 		this.removeWatcher(mapping.id);
 			
-			// 외부 폴더가 존재하는지 확인
-			if (!fs.existsSync(mapping.externalPath)) {
-				this.log(`외부 폴더가 존재하지 않습니다: ${mapping.externalPath}`, true);
-				return;
-			}
+	// 		// 외부 폴더가 존재하는지 확인
+	// 		if (!fs.existsSync(mapping.externalPath)) {
+	// 			this.log(`외부 폴더가 존재하지 않습니다: ${mapping.externalPath}`, true);
+	// 			return;
+	// 		}
 			
-			// fs.watch를 사용하여 외부 폴더 변경 감시
-			const watcher = fs.watch(
-				mapping.externalPath, 
-				{ recursive: true },
-				(eventType, filename) => {
-					// 변경 이벤트 핸들링 (나중에 구현)
-					this.handleExternalChange(mapping, eventType, filename);
-				}
-			);
+	// 		// fs.watch를 사용하여 외부 폴더 변경 감시
+	// 		const watcher = fs.watch(
+	// 			mapping.externalPath, 
+	// 			{ recursive: true },
+	// 			(eventType, filename) => {
+	// 				// 변경 이벤트 핸들링 (나중에 구현)
+	// 				this.handleExternalChange(mapping, eventType, filename);
+	// 			}
+	// 		);
 			
-			// 워처 맵에 저장
-			this.fileWatchers.set(mapping.id, watcher);
-			this.log(`워처 설정 완료: ${mapping.externalPath}`);
-		} catch (error) {
-			this.log(`워처 설정 실패: ${error}`, true);
-		}
-	}
+	// 		// 워처 맵에 저장
+	// 		this.fileWatchers.set(mapping.id, watcher);
+	// 		this.log(`워처 설정 완료: ${mapping.externalPath}`);
+	// 	} catch (error) {
+	// 		this.log(`워처 설정 실패: ${error}`, true);
+	// 	}
+	// }
 	
-	// 워처 제거
-	removeWatcher(mappingId: string) {
-		const watcher = this.fileWatchers.get(mappingId);
-		if (watcher) {
-			watcher.close();
-			this.fileWatchers.delete(mappingId);
-			this.log(`워처 제거: ${mappingId}`);
-		}
-	}
+	// // 워처 제거
+	// removeWatcher(mappingId: string) {
+	// 	const watcher = this.fileWatchers.get(mappingId);
+	// 	if (watcher) {
+	// 		watcher.close();
+	// 		this.fileWatchers.delete(mappingId);
+	// 		this.log(`워처 제거: ${mappingId}`);
+	// 	}
+	// }
 	
-	// 모든 워처 제거
-	removeAllWatchers() {
-		for (const [id, watcher] of this.fileWatchers) {
-			watcher.close();
-		}
-		this.fileWatchers.clear();
-		this.log('모든 워처 제거');
-	}
+	// // 모든 워처 제거
+	// removeAllWatchers() {
+	// 	for (const [id, watcher] of this.fileWatchers) {
+	// 		watcher.close();
+	// 	}
+	// 	this.fileWatchers.clear();
+	// 	this.log('모든 워처 제거');
+	// }
 	
-	// 초기 스캔 및 동기화
-	initialScan() {
-		if (!this.settings.pluginEnabled) return;
+	// // 초기 스캔 및 동기화
+	// initialScan() {
+	// 	if (!this.settings.pluginEnabled) return;
 		
-		console.log('[Markdown Hijacker] 초기 스캔 시작...');
+	// 	console.log('[Markdown Hijacker] 초기 스캔 시작...');
 		
-		// 활성화된 폴더 매핑에 대해 스캔 수행
-		for (const mapping of this.settings.folderMappings) {
-			if (!mapping.enabled) continue;
+	// 	// 활성화된 폴더 매핑에 대해 스캔 수행
+	// 	for (const mapping of this.settings.folderMappings) {
+	// 		if (!mapping.enabled) continue;
 			
-			this.scanAndSetupMapping(mapping);
-		}
+	// 		this.scanAndSetupMapping(mapping);
+	// 	}
 		
-		console.log('[Markdown Hijacker] 초기 스캔 완료');
-	}
+	// 	console.log('[Markdown Hijacker] 초기 스캔 완료');
+	// }
 
-	// 단일 매핑에 대한 스캔 및 설정 (새 함수)
-	async scanAndSetupMapping(mapping: FolderMapping) {
-		try {
-			console.log(`[Markdown Hijacker] 매핑 설정 및 스캔 시작: ${mapping.externalPath}`);
+	// // 단일 매핑에 대한 스캔 및 설정 (새 함수)
+	// async scanAndSetupMapping(mapping: FolderMapping) {
+	// 	try {
+	// 		console.log(`[Markdown Hijacker] 매핑 설정 및 스캔 시작: ${mapping.externalPath}`);
 			
-			// 폴더가 존재하는지 확인
-			if (!fs.existsSync(mapping.externalPath)) {
-				console.error(`[Markdown Hijacker] 외부 폴더가 존재하지 않습니다: ${mapping.externalPath}`);
-				return;
-			}
+	// 		// 폴더가 존재하는지 확인
+	// 		if (!fs.existsSync(mapping.externalPath)) {
+	// 			console.error(`[Markdown Hijacker] 외부 폴더가 존재하지 않습니다: ${mapping.externalPath}`);
+	// 			return;
+	// 		}
 			
-			// 1. 워처 설정 (기존 설정 제거 후)
-			if (this.externalWatcher) {
-				// External Watcher 설정
-				console.log(`[Markdown Hijacker] 외부 워처 설정 시작: ${mapping.externalPath}`);
-				const setupResult = this.externalWatcher.setupWatcher(mapping, this.settings.showNotifications);
-				console.log(`[Markdown Hijacker] 외부 워처 설정 ${setupResult ? '성공' : '실패'}: ${mapping.externalPath}`);
+	// 		// 1. 워처 설정 (기존 설정 제거 후)
+	// 		if (this.externalWatcher) {
+	// 			// External Watcher 설정
+	// 			console.log(`[Markdown Hijacker] 외부 워처 설정 시작: ${mapping.externalPath}`);
+	// 			const setupResult = this.externalWatcher.setupWatcher(mapping, this.settings.showNotifications);
+	// 			console.log(`[Markdown Hijacker] 외부 워처 설정 ${setupResult ? '성공' : '실패'}: ${mapping.externalPath}`);
 				
-				// 동기화 핸들러 설정
-				console.log(`[Markdown Hijacker] 동기화 핸들러 설정 시작: ${mapping.id}`);
-				this.externalSync.setupSyncHandlers(mapping, this.settings.showNotifications);
-			}
+	// 			// 동기화 핸들러 설정
+	// 			console.log(`[Markdown Hijacker] 동기화 핸들러 설정 시작: ${mapping.id}`);
+	// 			this.externalSync.setupSyncHandlers(mapping, this.settings.showNotifications);
+	// 		}
 			
-			// 2. 폴더의 모든 마크다운 파일에 프론트매터 추가 처리
-			console.log(`[Markdown Hijacker] 마크다운 파일 프론트매터 처리 시작: ${mapping.externalPath}`);
-			await this.scanFolderAndProcessMarkdownFiles(mapping.externalPath, mapping.externalPath);
+	// 		// 2. 폴더의 모든 마크다운 파일에 프론트매터 추가 처리
+	// 		console.log(`[Markdown Hijacker] 마크다운 파일 프론트매터 처리 시작: ${mapping.externalPath}`);
+	// 		await this.scanFolderAndProcessMarkdownFiles(mapping.externalPath, mapping.externalPath);
 			
-			// 3. 폴더의 모든 마크다운 파일을 Vault로 동기화
-			console.log(`[Markdown Hijacker] Vault 동기화 시작: ${mapping.externalPath} -> ${mapping.vaultPath}`);
-			await this.scanFolderAndSyncToVault(mapping);
+	// 		// 3. 폴더의 모든 마크다운 파일을 Vault로 동기화
+	// 		console.log(`[Markdown Hijacker] Vault 동기화 시작: ${mapping.externalPath} -> ${mapping.vaultPath}`);
+	// 		await this.scanFolderAndSyncToVault(mapping);
 			
-			console.log(`[Markdown Hijacker] 매핑 설정 및 스캔 완료: ${mapping.externalPath}`);
-		} catch (error) {
-			console.error(`[Markdown Hijacker] 매핑 설정 및 스캔 오류: ${mapping.externalPath} - ${error}`);
-		}
-	}
+	// 		console.log(`[Markdown Hijacker] 매핑 설정 및 스캔 완료: ${mapping.externalPath}`);
+	// 	} catch (error) {
+	// 		console.error(`[Markdown Hijacker] 매핑 설정 및 스캔 오류: ${mapping.externalPath} - ${error}`);
+	// 	}
+	// }
 
-	// 폴더 재귀 스캔 및 마크다운 파일 처리
-	private async scanFolderAndProcessMarkdownFiles(folderPath: string, basePath: string) {
-		try {
-			console.log(`[Markdown Hijacker] 폴더 스캔 시작: ${folderPath}`);
-			const files = fs.readdirSync(folderPath);
+	// // 폴더 재귀 스캔 및 마크다운 파일 처리
+	// private async scanFolderAndProcessMarkdownFiles(folderPath: string, basePath: string) {
+	// 	try {
+	// 		console.log(`[Markdown Hijacker] 폴더 스캔 시작: ${folderPath}`);
+	// 		const files = fs.readdirSync(folderPath);
 			
-			for (const file of files) {
-				const fullPath = path.join(folderPath, file);
+	// 		for (const file of files) {
+	// 			const fullPath = path.join(folderPath, file);
 				
-				try {
-					const stats = fs.statSync(fullPath);
+	// 			try {
+	// 				const stats = fs.statSync(fullPath);
 					
-					if (stats.isDirectory()) {
-						// 폴더명만 추출
-						const folderName = path.basename(fullPath);
+	// 				if (stats.isDirectory()) {
+	// 					// 폴더명만 추출
+	// 					const folderName = path.basename(fullPath);
 						
-						// 필터링 로직 적용 - ExternalSync의 shouldProcessFolder 메서드 사용
-						if (this.externalSync) {
-							if (!this.externalSync.shouldProcessFolder(folderName)) {
-								console.log(`[Markdown Hijacker] 필터링 규칙에 따라 폴더 제외: ${folderName}`);
-								continue;
-							}
-						}
+	// 					// 필터링 로직 적용 - ExternalSync의 shouldProcessFolder 메서드 사용
+	// 					if (this.externalSync) {
+	// 						if (!this.externalSync.shouldProcessFolder(folderName)) {
+	// 							console.log(`[Markdown Hijacker] 필터링 규칙에 따라 폴더 제외: ${folderName}`);
+	// 							continue;
+	// 						}
+	// 					}
 						
-						// 서브폴더에 대해 재귀 호출
-						await this.scanFolderAndProcessMarkdownFiles(fullPath, basePath);
-					} else if (fullPath.toLowerCase().endsWith('.md')) {
-						// 마크다운 파일인 경우 프론트매터 처리
-						const relativePath = fullPath.substring(basePath.length);
-						console.log(`[Markdown Hijacker] 마크다운 파일 처리: ${fullPath}, 상대 경로: ${relativePath}`);
+	// 					// 서브폴더에 대해 재귀 호출
+	// 					await this.scanFolderAndProcessMarkdownFiles(fullPath, basePath);
+	// 				} else if (fullPath.toLowerCase().endsWith('.md')) {
+	// 					// 마크다운 파일인 경우 프론트매터 처리
+	// 					const relativePath = fullPath.substring(basePath.length);
+	// 					console.log(`[Markdown Hijacker] 마크다운 파일 처리: ${fullPath}, 상대 경로: ${relativePath}`);
 						
-						// 외부 워처의 processMarkdownFile 메서드 사용
-						if (this.externalWatcher) {
-							const processed = this.externalWatcher.processMarkdownFile(fullPath, basePath, relativePath);
-							console.log(`[Markdown Hijacker] 마크다운 파일 처리 ${processed ? '완료' : '건너뜀'}: ${fullPath}`);
-						}
-					}
-				} catch (err) {
-					console.error(`[Markdown Hijacker] 파일 처리 오류: ${fullPath} - ${err}`);
-				}
-			}
-			console.log(`[Markdown Hijacker] 폴더 스캔 완료: ${folderPath}`);
-		} catch (err) {
-			console.error(`[Markdown Hijacker] 폴더 읽기 오류: ${folderPath} - ${err}`);
-		}
-	}
+	// 					// 외부 워처의 processMarkdownFile 메서드 사용
+	// 					if (this.externalWatcher) {
+	// 						const processed = this.externalWatcher.processMarkdownFile(fullPath, basePath, relativePath);
+	// 						console.log(`[Markdown Hijacker] 마크다운 파일 처리 ${processed ? '완료' : '건너뜀'}: ${fullPath}`);
+	// 					}
+	// 				}
+	// 			} catch (err) {
+	// 				console.error(`[Markdown Hijacker] 파일 처리 오류: ${fullPath} - ${err}`);
+	// 			}
+	// 		}
+	// 		console.log(`[Markdown Hijacker] 폴더 스캔 완료: ${folderPath}`);
+	// 	} catch (err) {
+	// 		console.error(`[Markdown Hijacker] 폴더 읽기 오류: ${folderPath} - ${err}`);
+	// 	}
+	// }
 	
-	// 외부 폴더 변경 핸들링
-	handleExternalChange(mapping: FolderMapping, eventType: string, filename: string | null) {
-		// 파일명이 null인 경우 처리
-		if (filename === null) {
-			this.log('파일명이 없는 변경 이벤트 발생', true);
-			return;
-		}
+	// // 외부 폴더 변경 핸들링
+	// handleExternalChange(mapping: FolderMapping, eventType: string, filename: string | null) {
+	// 	// 파일명이 null인 경우 처리
+	// 	if (filename === null) {
+	// 		this.log('파일명이 없는 변경 이벤트 발생', true);
+	// 		return;
+	// 	}
 		
-		// 나중에 구현
-	}
+	// 	// 나중에 구현
+	// }
 	
-	// 로깅 유틸리티
-	log(message: string, isError: boolean = false) {
-		if (this.settings.debugMode || isError) {
-			if (isError) {
-				console.error(`[Markdown Hijacker] ${message}`);
-			} else {
-				console.log(`[Markdown Hijacker] ${message}`);
-			}
-		}
-	}
+	// // 로깅 유틸리티
+	// log(message: string, isError: boolean = false) {
+	// 	if (this.settings.debugMode || isError) {
+	// 		if (isError) {
+	// 			console.error(`[Markdown Hijacker] ${message}`);
+	// 		} else {
+	// 			console.log(`[Markdown Hijacker] ${message}`);
+	// 		}
+	// 	}
+	// }
 
-	startMonitoringExternalChanges() {
-		if (this.monitoringExternalChanges) return;
+	// startMonitoringExternalChanges() {
+	// 	if (this.monitoringExternalChanges) return;
 
-		console.log(`[Markdown Hijacker] 외부 폴더 변경 감지 시작...`);
+	// 	console.log(`[Markdown Hijacker] 외부 폴더 변경 감지 시작...`);
 		
-		// 활성화된 매핑 수 확인 (디버깅용)
-		const enabledMappings = this.settings.folderMappings.filter(m => m.enabled);
-		console.log(`[Markdown Hijacker] 활성화된 폴더 매핑: ${enabledMappings.length}개`);
+	// 	// 활성화된 매핑 수 확인 (디버깅용)
+	// 	const enabledMappings = this.settings.folderMappings.filter(m => m.enabled);
+	// 	console.log(`[Markdown Hijacker] 활성화된 폴더 매핑: ${enabledMappings.length}개`);
 		
-		// 매핑 정보 상세 로깅
-		enabledMappings.forEach((m, index) => {
-			console.log(`[Markdown Hijacker] 매핑 #${index+1} - ID: ${m.id}, 경로: ${m.vaultPath} ↔ ${m.externalPath}`);
-		});
+	// 	// 매핑 정보 상세 로깅
+	// 	enabledMappings.forEach((m, index) => {
+	// 		console.log(`[Markdown Hijacker] 매핑 #${index+1} - ID: ${m.id}, 경로: ${m.vaultPath} ↔ ${m.externalPath}`);
+	// 	});
 		
-		// Setup watchers for each external folder
-		for (const mapping of this.settings.folderMappings) {
-			if (mapping.externalPath && mapping.vaultPath) {
-				console.log(`[Markdown Hijacker] 워처 설정 검토: ID=${mapping.id}, ${mapping.vaultPath} ↔ ${mapping.externalPath} (활성화: ${mapping.enabled})`);
+	// 	// Setup watchers for each external folder
+	// 	for (const mapping of this.settings.folderMappings) {
+	// 		if (mapping.externalPath && mapping.vaultPath) {
+	// 			console.log(`[Markdown Hijacker] 워처 설정 검토: ID=${mapping.id}, ${mapping.vaultPath} ↔ ${mapping.externalPath} (활성화: ${mapping.enabled})`);
 				
-				if (!mapping.enabled) {
-					console.log(`[Markdown Hijacker] 매핑이 비활성화되어 있어 건너뜁니다: ${mapping.vaultPath}`);
-					continue;
-				}
+	// 			if (!mapping.enabled) {
+	// 				console.log(`[Markdown Hijacker] 매핑이 비활성화되어 있어 건너뜁니다: ${mapping.vaultPath}`);
+	// 				continue;
+	// 			}
 				
-				try {
-					// 경로가 실제로 존재하는지 확인
-					if (!fs.existsSync(mapping.externalPath)) {
-						console.error(`[Markdown Hijacker] 외부 경로가 존재하지 않습니다: ${mapping.externalPath}`);
-						if (this.settings.showNotifications) {
-							new Notice(`외부 폴더가 존재하지 않습니다: ${mapping.externalPath}`);
-						}
-						continue;
-					}
+	// 			try {
+	// 				// 경로가 실제로 존재하는지 확인
+	// 				if (!fs.existsSync(mapping.externalPath)) {
+	// 					console.error(`[Markdown Hijacker] 외부 경로가 존재하지 않습니다: ${mapping.externalPath}`);
+	// 					if (this.settings.showNotifications) {
+	// 						new Notice(`외부 폴더가 존재하지 않습니다: ${mapping.externalPath}`);
+	// 					}
+	// 					continue;
+	// 				}
 					
-					// 워처 설정 및 동기화 핸들러 연결
-					console.log(`[Markdown Hijacker] 워처 설정 시작: ID=${mapping.id}, 경로=${mapping.externalPath}`);
-					const result = this.externalWatcher.setupWatcher(mapping, this.settings.showNotifications);
-					console.log(`[Markdown Hijacker] 워처 설정 ${result ? '성공' : '실패'}: ${mapping.externalPath}`);
+	// 				// 워처 설정 및 동기화 핸들러 연결
+	// 				console.log(`[Markdown Hijacker] 워처 설정 시작: ID=${mapping.id}, 경로=${mapping.externalPath}`);
+	// 				const result = this.externalWatcher.setupWatcher(mapping, this.settings.showNotifications);
+	// 				console.log(`[Markdown Hijacker] 워처 설정 ${result ? '성공' : '실패'}: ${mapping.externalPath}`);
 					
-					// 동기화 핸들러 설정
-					if (result) {
-						console.log(`[Markdown Hijacker] 동기화 핸들러 설정 시작: ID=${mapping.id}, 경로=${mapping.externalPath}`);
-						this.externalSync.setupSyncHandlers(mapping);
-						console.log(`[Markdown Hijacker] 동기화 핸들러 설정 완료: ID=${mapping.id}`);
-					}
-				} catch (error) {
-					console.error(`[Markdown Hijacker] 워처 설정 오류: ${mapping.externalPath} - ${error}`);
-					if (this.settings.showNotifications) {
-						new Notice(`외부 폴더 감시 설정 오류: ${mapping.externalPath}`);
-					}
-				}
-			} else {
-				console.log(`[Markdown Hijacker] 매핑 경로가 없거나 올바르지 않습니다: Vault=${mapping.vaultPath}, External=${mapping.externalPath}`);
-			}
-		}
+	// 				// 동기화 핸들러 설정
+	// 				if (result) {
+	// 					console.log(`[Markdown Hijacker] 동기화 핸들러 설정 시작: ID=${mapping.id}, 경로=${mapping.externalPath}`);
+	// 					this.externalSync.setupSyncHandlers(mapping);
+	// 					console.log(`[Markdown Hijacker] 동기화 핸들러 설정 완료: ID=${mapping.id}`);
+	// 				}
+	// 			} catch (error) {
+	// 				console.error(`[Markdown Hijacker] 워처 설정 오류: ${mapping.externalPath} - ${error}`);
+	// 				if (this.settings.showNotifications) {
+	// 					new Notice(`외부 폴더 감시 설정 오류: ${mapping.externalPath}`);
+	// 				}
+	// 			}
+	// 		} else {
+	// 			console.log(`[Markdown Hijacker] 매핑 경로가 없거나 올바르지 않습니다: Vault=${mapping.vaultPath}, External=${mapping.externalPath}`);
+	// 		}
+	// 	}
 
-		this.monitoringExternalChanges = true;
-		console.log(`[Markdown Hijacker] 외부 폴더 변경 감지 설정 완료`);
-	}
+	// 	this.monitoringExternalChanges = true;
+	// 	console.log(`[Markdown Hijacker] 외부 폴더 변경 감지 설정 완료`);
+	// }
 
-	stopMonitoringExternalChanges() {
-		if (!this.monitoringExternalChanges) return;
+	// stopMonitoringExternalChanges() {
+	// 	if (!this.monitoringExternalChanges) return;
 
-		// Remove all watchers
-		this.externalWatcher.removeAllWatchers();
-		this.monitoringExternalChanges = false;
-	}
+	// 	// Remove all watchers
+	// 	this.externalWatcher.removeAllWatchers();
+	// 	this.monitoringExternalChanges = false;
+	// }
 
-	handleFileOpen(filePath: string) {
-		// Make sure external sync is enabled
-		if (!this.settings.enableExternalSync) {
-			return;
-		}
+	// handleFileOpen(filePath: string) {
+	// 	// Make sure external sync is enabled
+	// 	if (!this.settings.enableExternalSync) {
+	// 		return;
+	// 	}
 
-		// Check if this file path corresponds to any of our mapped folders
-		for (const mapping of this.settings.folderMappings) {
-			if (!mapping.enabled) continue;
+	// 	// Check if this file path corresponds to any of our mapped folders
+	// 	for (const mapping of this.settings.folderMappings) {
+	// 		if (!mapping.enabled) continue;
 
-			// Check if the file belongs to this mapping
-			if (filePath.startsWith(mapping.vaultPath)) {
-				this.log(`File opened: ${filePath} in mapped folder: ${mapping.vaultPath}`);
+	// 		// Check if the file belongs to this mapping
+	// 		if (filePath.startsWith(mapping.vaultPath)) {
+	// 			this.log(`File opened: ${filePath} in mapped folder: ${mapping.vaultPath}`);
 				
-				// Here we could implement additional functionality like:
-				// - Check if the file exists in the external folder
-				// - Handle any synchronization needs
-				// - Display status information about the external mapping
+	// 			// Here we could implement additional functionality like:
+	// 			// - Check if the file exists in the external folder
+	// 			// - Handle any synchronization needs
+	// 			// - Display status information about the external mapping
 				
-				// For now, we'll just log the event
-				if (this.settings.debugMode) {
-					console.log(`[Markdown Hijacker] File opened in a watched folder: ${filePath}`);
-				}
+	// 			// For now, we'll just log the event
+	// 			if (this.settings.debugMode) {
+	// 				console.log(`[Markdown Hijacker] File opened in a watched folder: ${filePath}`);
+	// 			}
 				
-				// We could also highlight the UI or show a notification if needed
-				// if (this.settings.showNotifications) {
-				//     new Notice(`File is linked to external folder: ${mapping.externalPath}`);
-				// }
+	// 			// We could also highlight the UI or show a notification if needed
+	// 			// if (this.settings.showNotifications) {
+	// 			//     new Notice(`File is linked to external folder: ${mapping.externalPath}`);
+	// 			// }
 				
-				break;
-			}
-		}
-	}
+	// 			break;
+	// 		}
+	// 	}
+	// }
 
-	// 외부 폴더 스캔 및 Vault 동기화 메서드 추가
-	public async scanFolderAndSyncToVault(mapping: FolderMapping) {
-		try {
-			console.log(`[Markdown Hijacker] 폴더 동기화 시작: ${mapping.externalPath} -> ${mapping.vaultPath}`);
+	// // 외부 폴더 스캔 및 Vault 동기화 메서드 추가
+	// public async scanFolderAndSyncToVault(mapping: FolderMapping) {
+	// 	try {
+	// 		console.log(`[Markdown Hijacker] 폴더 동기화 시작: ${mapping.externalPath} -> ${mapping.vaultPath}`);
 			
-			// 폴더 내의 모든 파일을 재귀적으로 스캔
-			this.syncFolderContents(mapping.externalPath, mapping);
+	// 		// 폴더 내의 모든 파일을 재귀적으로 스캔
+	// 		this.syncFolderContents(mapping.externalPath, mapping);
 			
-			console.log(`[Markdown Hijacker] 폴더 동기화 완료: ${mapping.externalPath}`);
-		} catch (error) {
-			console.error(`[Markdown Hijacker] 폴더 동기화 오류: ${error}`);
-		}
-	}
+	// 		console.log(`[Markdown Hijacker] 폴더 동기화 완료: ${mapping.externalPath}`);
+	// 	} catch (error) {
+	// 		console.error(`[Markdown Hijacker] 폴더 동기화 오류: ${error}`);
+	// 	}
+	// }
 
-	private async syncFolderContents(folderPath: string, mapping: FolderMapping) {
-		try {
-			const files = fs.readdirSync(folderPath);
+	// private async syncFolderContents(folderPath: string, mapping: FolderMapping) {
+	// 	try {
+	// 		const files = fs.readdirSync(folderPath);
 			
-			for (const file of files) {
-				const fullPath = path.join(folderPath, file);
+	// 		for (const file of files) {
+	// 			const fullPath = path.join(folderPath, file);
 				
-				try {
-					const stats = fs.statSync(fullPath);
+	// 			try {
+	// 				const stats = fs.statSync(fullPath);
 					
-					if (stats.isDirectory()) {
-						// 서브폴더에 대해 재귀 호출
-						await this.syncFolderContents(fullPath, mapping);
-					} else if (file.toLowerCase().endsWith('.md')) {
-						// 마크다운 파일인 경우 Vault에 동기화
-						await this.syncFileToVault(fullPath, mapping);
-					}
-				} catch (err) {
-					console.error(`[Markdown Hijacker] 파일 처리 오류: ${fullPath} - ${err}`);
-				}
-			}
-		} catch (err) {
-			console.error(`[Markdown Hijacker] 폴더 읽기 오류: ${folderPath} - ${err}`);
-		}
-	}
+	// 				if (stats.isDirectory()) {
+	// 					// 서브폴더에 대해 재귀 호출
+	// 					await this.syncFolderContents(fullPath, mapping);
+	// 				} else if (file.toLowerCase().endsWith('.md')) {
+	// 					// 마크다운 파일인 경우 Vault에 동기화
+	// 					await this.syncFileToVault(fullPath, mapping);
+	// 				}
+	// 			} catch (err) {
+	// 				console.error(`[Markdown Hijacker] 파일 처리 오류: ${fullPath} - ${err}`);
+	// 			}
+	// 		}
+	// 	} catch (err) {
+	// 		console.error(`[Markdown Hijacker] 폴더 읽기 오류: ${folderPath} - ${err}`);
+	// 	}
+	// }
 
-	private async syncFileToVault(externalPath: string, mapping: FolderMapping) {
-		try {
-			// Vault 내부 경로 계산
-			const vaultPath = this.vaultSync.externalToVaultPath(externalPath, mapping);
+	// private async syncFileToVault(externalPath: string, mapping: FolderMapping) {
+	// 	try {
+	// 		// Vault 내부 경로 계산
+	// 		const vaultPath = this.vaultSync.externalToVaultPath(externalPath, mapping);
 			
-			// 파일 존재 여부 확인
-			const { exists, file } = this.vaultSync.fileExistsInVault(vaultPath);
+	// 		// 파일 존재 여부 확인
+	// 		const { exists, file } = this.vaultSync.fileExistsInVault(vaultPath);
 			
-			// 파일 내용 읽기
-			const content = fs.readFileSync(externalPath, 'utf8');
+	// 		// 파일 내용 읽기
+	// 		const content = fs.readFileSync(externalPath, 'utf8');
 			
-			if (!exists) {
-				// Vault에 파일이 없으면 새로 생성
-				console.log(`[Markdown Hijacker] Vault에 파일 생성: ${vaultPath}`);
-				await this.vaultSync.createFile(vaultPath, content);
-			} else if (file) {
-				// Vault에 파일이 있으면 수정 시간 비교 후 업데이트
-				const externalStats = fs.statSync(externalPath);
-				const vaultStats = await this.app.vault.adapter.stat(vaultPath);
+	// 		if (!exists) {
+	// 			// Vault에 파일이 없으면 새로 생성
+	// 			console.log(`[Markdown Hijacker] Vault에 파일 생성: ${vaultPath}`);
+	// 			await this.vaultSync.createFile(vaultPath, content);
+	// 		} else if (file) {
+	// 			// Vault에 파일이 있으면 수정 시간 비교 후 업데이트
+	// 			const externalStats = fs.statSync(externalPath);
+	// 			const vaultStats = await this.app.vault.adapter.stat(vaultPath);
 				
-				// 외부 파일이 더 최신인 경우에만 업데이트
-				if (vaultStats && externalStats.mtime.getTime() > vaultStats.mtime) {
-					console.log(`[Markdown Hijacker] Vault 파일 업데이트: ${vaultPath}`);
-					await this.vaultSync.modifyFile(file, content);
-				} else {
-					console.log(`[Markdown Hijacker] Vault 파일이 더 최신이거나 정보를 가져올 수 없어 업데이트 안함: ${vaultPath}`);
-				}
-			}
-		} catch (error) {
-			console.error(`[Markdown Hijacker] 파일 동기화 오류: ${externalPath} - ${error}`);
-		}
-	}
+	// 			// 외부 파일이 더 최신인 경우에만 업데이트
+	// 			if (vaultStats && externalStats.mtime.getTime() > vaultStats.mtime) {
+	// 				console.log(`[Markdown Hijacker] Vault 파일 업데이트: ${vaultPath}`);
+	// 				await this.vaultSync.modifyFile(file, content);
+	// 			} else {
+	// 				console.log(`[Markdown Hijacker] Vault 파일이 더 최신이거나 정보를 가져올 수 없어 업데이트 안함: ${vaultPath}`);
+	// 			}
+	// 		}
+	// 	} catch (error) {
+	// 		console.error(`[Markdown Hijacker] 파일 동기화 오류: ${externalPath} - ${error}`);
+	// 	}
+	// }
 
-	// Vault 내부 변경 감지 시작
-	startMonitoringInternalChanges() {
-		if (this.monitoringInternalChanges) return;
+	// // Vault 내부 변경 감지 시작
+	// startMonitoringInternalChanges() {
+	// 	if (this.monitoringInternalChanges) return;
 		
-		console.log(`[Markdown Hijacker] Vault 내부 변경 감지 시작...`);
+	// 	console.log(`[Markdown Hijacker] Vault 내부 변경 감지 시작...`);
 		
-		try {
-			// 활성화된 매핑 수 확인 (디버깅용)
-			const enabledMappings = this.settings.folderMappings.filter(m => m.enabled);
-			console.log(`[Markdown Hijacker] 활성화된 폴더 매핑: ${enabledMappings.length}개`);
+	// 	try {
+	// 		// 활성화된 매핑 수 확인 (디버깅용)
+	// 		const enabledMappings = this.settings.folderMappings.filter(m => m.enabled);
+	// 		console.log(`[Markdown Hijacker] 활성화된 폴더 매핑: ${enabledMappings.length}개`);
 			
-			// 내부 감시자 시작
-			this.internalWatcher.startWatching();
+	// 		// 내부 감시자 시작
+	// 		this.internalWatcher.startWatching();
 			
-			// 매핑된 폴더에 대해 동기화 핸들러 설정
-			for (const mapping of enabledMappings) {
-				console.log(`[Markdown Hijacker] 내부 동기화 핸들러 설정: ${mapping.vaultPath} -> ${mapping.externalPath}`);
-				this.internalSync.setupSyncHandlers(mapping);
-			}
+	// 		// 매핑된 폴더에 대해 동기화 핸들러 설정
+	// 		for (const mapping of enabledMappings) {
+	// 			console.log(`[Markdown Hijacker] 내부 동기화 핸들러 설정: ${mapping.vaultPath} -> ${mapping.externalPath}`);
+	// 			this.internalSync.setupSyncHandlers(mapping);
+	// 		}
 			
-			this.monitoringInternalChanges = true;
-			console.log(`[Markdown Hijacker] Vault 내부 변경 감지 설정 완료`);
-		} catch (error) {
-			console.error(`[Markdown Hijacker] Vault 내부 변경 감지 설정 오류:`, error);
-			if (this.settings.showNotifications) {
-				new Notice(`Vault 내부 변경 감지 설정 오류가 발생했습니다.`);
-			}
-		}
-	}
+	// 		this.monitoringInternalChanges = true;
+	// 		console.log(`[Markdown Hijacker] Vault 내부 변경 감지 설정 완료`);
+	// 	} catch (error) {
+	// 		console.error(`[Markdown Hijacker] Vault 내부 변경 감지 설정 오류:`, error);
+	// 		if (this.settings.showNotifications) {
+	// 			new Notice(`Vault 내부 변경 감지 설정 오류가 발생했습니다.`);
+	// 		}
+	// 	}
+	// }
 	
-	// Vault 내부 변경 감지 중지
-	stopMonitoringInternalChanges() {
-		if (!this.monitoringInternalChanges) return;
+	// // Vault 내부 변경 감지 중지
+	// stopMonitoringInternalChanges() {
+	// 	if (!this.monitoringInternalChanges) return;
 		
-		try {
-			// 내부 감시자 중지
-			this.internalWatcher.stopWatching();
-			this.internalWatcher.removeAllMappings();
-			this.monitoringInternalChanges = false;
-			console.log(`[Markdown Hijacker] Vault 내부 변경 감지 중지됨`);
-		} catch (error) {
-			console.error(`[Markdown Hijacker] Vault 내부 변경 감지 중지 오류:`, error);
-		}
-	}
+	// 	try {
+	// 		// 내부 감시자 중지
+	// 		this.internalWatcher.stopWatching();
+	// 		this.internalWatcher.removeAllMappings();
+	// 		this.monitoringInternalChanges = false;
+	// 		console.log(`[Markdown Hijacker] Vault 내부 변경 감지 중지됨`);
+	// 	} catch (error) {
+	// 		console.error(`[Markdown Hijacker] Vault 내부 변경 감지 중지 오류:`, error);
+	// 	}
+	// }
 
-	// updateStatusBar 메서드 추가
-	private updateStatusBar() {
-		const statusBarItem = this.addStatusBarItem();
-		statusBarItem.setText('Markdown Hijacker: ' + 
-			(this.settings.pluginEnabled ? '활성화' : '비활성화'));
-	}
+	// // updateStatusBar 메서드 추가
+	// private updateStatusBar() {
+	// 	const statusBarItem = this.addStatusBarItem();
+	// 	statusBarItem.setText('Markdown Hijacker: ' + 
+	// 		(this.settings.pluginEnabled ? '활성화' : '비활성화'));
+	// }
 }

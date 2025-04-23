@@ -1,7 +1,8 @@
 import { Notice, Plugin } from "obsidian";
 import { DEFAULT_SETTINGS } from "./MarkdownHijackerSettingUI";
 import { FolderConnectionSettings } from "./types";
-import { isExistDirectory } from "reSrc/Utils/pathUtils";
+import { isExistDirectory } from "reSrc/utils/pathUtils";
+import MarkdownHijacker from "main";
 
 export async function loadSettings(plugin: Plugin) {
     // Merge both default settings objects
@@ -15,8 +16,8 @@ export function validateConnectionPaths(connection: FolderConnectionSettings): {
 		return { valid: false, message: "External Path is not valid" };
 	}
 
-	const vaultValid = connection.vaultPath.trim() !== '';
-	if (!vaultValid) {
+	const internalValid = connection.internalPath.trim() !== '';
+	if (!internalValid) {
 		return { valid: false, message: "Please specify a valid Vault path." };
 	}
 
@@ -27,13 +28,18 @@ export function validateConnectionPaths(connection: FolderConnectionSettings): {
  * 연결의 동기화를 비활성화하고 UI 토글 상태도 false로 반영
  */
 export function disableSync(connection: FolderConnectionSettings, itemHeaderRight: HTMLElement): void {
-    if(connection.syncEnabled) {
-        connection.syncEnabled = false;
-        
-        const checkboxContainer = itemHeaderRight.querySelector('.checkbox-container');
-        if (checkboxContainer?.classList.contains('is-enabled')) {
-            checkboxContainer.classList.remove('is-enabled');
-        }
-        new Notice("Sync disabled. Re-enable after changes.");
+    if(!connection.syncEnabled) return
+    
+    connection.syncEnabled = false;
+    
+    const checkboxContainer = itemHeaderRight.querySelector('.checkbox-container');
+    if (checkboxContainer?.classList.contains('is-enabled')) {
+        checkboxContainer.classList.remove('is-enabled');
     }
+    new Notice("Sync disabled. Re-enable after changes.");
+}
+
+export async function saveSettings(plugin: MarkdownHijacker) {
+    await plugin.saveData(plugin.settings);    
+    (plugin.app.workspace as any).trigger('markdown-hijacker:settings-changed');
 }

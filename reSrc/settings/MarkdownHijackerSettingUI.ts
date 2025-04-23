@@ -1,10 +1,10 @@
 import MarkdownHijacker from "../../main";
 import { App, Notice, PluginSettingTab, setIcon, Setting } from "obsidian";
-import { FolderConnectionSettings, MarkdownHijackerSettings, SyncType } from "./types";
-import { openFolderSelectionDialog } from "../Utils/openFolderSelectionDialog";
-import { openVaultFolderSelectionDialog } from "reSrc/Utils/openVaultFolderSelectionDialog";
+import { BidirectionalType, DeletedFileAction, FolderConnectionSettings, MarkdownHijackerSettings, SyncType } from "./types";
+import { openFolderSelectionDialog } from "../utils/openFolderSelectionDialog";
+import { openVaultFolderSelectionDialog } from "reSrc/utils/openVaultFolderSelectionDialog";
 import { RemoveConnectionModal } from "./modal";
-import { disableSync, validateConnectionPaths } from "./utils";
+import { disableSync, saveSettings, validateConnectionPaths } from "./utils";
 
 export const DEFAULT_SETTINGS : MarkdownHijackerSettings = {
     enableGlobalSync: false,
@@ -16,9 +16,11 @@ export const DEFAULT_SETTINGS : MarkdownHijackerSettings = {
 export const DEFAULT_CONNECTIONS : FolderConnectionSettings = {
 	id: crypto.randomUUID(),
 	name: 'Untitled',
-	vaultPath: '',
+	internalPath: '',
 	externalPath: '',
 	syncType: SyncType.bidirectional,
+	bidirectionalType: BidirectionalType.merge,
+	deletedFileAction: DeletedFileAction.property,
 	ignoreHiddenFiles: true,
 	excludeFolders: [
 		'node_modules',
@@ -79,9 +81,9 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 			.setDesc('Enable or disable global synchronization')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.enableGlobalSync)
-				.onChange(value => {
+				.onChange(async (value) => {
 					this.plugin.settings.enableGlobalSync = value;
-					this.plugin.saveSettings();
+					await saveSettings(this.plugin);
 					this.plugin.statusBar.update();
 				}));
 
@@ -92,7 +94,7 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 				.setValue(this.plugin.settings.syncInterval.toString())
 				.onChange(async(value) => {
 					this.plugin.settings.syncInterval = parseInt(value);
-					await this.plugin.saveSettings();
+					await saveSettings(this.plugin);
 				}));
 
 				
@@ -110,13 +112,13 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 					console.log('Clicked New Connection');
 					const newConnection = { ...DEFAULT_CONNECTIONS, id: crypto.randomUUID() };
 					this.plugin.settings.connections.push(newConnection);
-					await this.plugin.saveSettings();
+					await saveSettings(this.plugin);
 					this.display();
 				}));
 		
 		const connectionsList = syncConnectionsSection.createDiv({ cls: 'sync-connections-list' });
 
-		this.plugin.settings.connections.forEach(connection => {
+		this.plugin.settings.connections.forEach((connection : FolderConnectionSettings) => {
 			const connectionItem = connectionsList.createDiv({ cls: 'sync-connection-item' });
 			
 			/* Item Header */
@@ -137,7 +139,7 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 				input.onblur = async () => {
 					const newName = input.value.trim() || "Untitled";
 					connection.name = newName;
-					await this.plugin.saveSettings();
+					await saveSettings(this.plugin);
 					this.display();
 				};
 				input.onkeydown = (e) => {
@@ -159,12 +161,12 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 									connection.syncEnabled = false;
 									toggle.setValue(false);
 									new Notice(result.message!);
-									await this.plugin.saveSettings();
+									await saveSettings(this.plugin);
 									return;
 								}
 							}
 							connection.syncEnabled = value;
-							await this.plugin.saveSettings();
+							await saveSettings(this.plugin);
 						})
 				);
 
@@ -185,20 +187,20 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 			
 			vaultSetting
 				.addText(text => text
-					.setValue(connection.vaultPath)
-					.onChange(value => {
-						connection.vaultPath = value;
+					.setValue(connection.internalPath)
+					.onChange(async (value) => {
+						connection.internalPath = value;
 						disableSync(connection, itemHeaderRight);
-						this.plugin.saveSettings();
+						await saveSettings(this.plugin);
 					}))
 				.addButton(btn => btn
 					.setButtonText('📂')
 					.onClick(async () => {
 						const selected = await openVaultFolderSelectionDialog(this.app);
 						if (selected) {
-							connection.vaultPath = selected;
+							connection.internalPath = selected;
 							disableSync(connection, itemHeaderRight);
-							await this.plugin.saveSettings();
+							await saveSettings(this.plugin);
 							this.display();
 						}
 					}));
@@ -218,7 +220,7 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 					.onChange(async value => {
 						connection.externalPath = value;
 						disableSync(connection, itemHeaderRight);
-						await this.plugin.saveSettings(); // ← await 추가
+						await saveSettings(this.plugin); // ← await 추가
 					}))
 				.addButton(button => button
 					.setButtonText('📂')
@@ -227,7 +229,7 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 						if (path) {
 							connection.externalPath = path;
 							disableSync(connection, itemHeaderRight);
-							await this.plugin.saveSettings();
+							await saveSettings(this.plugin);
 							this.display();
 						}
 					}));
@@ -247,7 +249,7 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 					.onChange(async value => {
 						connection.syncType = value as SyncType;
 						disableSync(connection, itemHeaderRight);
-						await this.plugin.saveSettings();
+						await saveSettings(this.plugin);
 			
 						// 타이틀 옆 syncType 텍스트만 직접 업데이트
 						const directionEl = itemHeaderLeft.querySelector('.sync-connection-direction');
@@ -257,14 +259,43 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 					}));
 
 			new Setting(advancedContent)
+				.setName('Bidirectional Type')
+				.setDesc('Select the bidirectional type')
+				.addDropdown(dropdown => dropdown
+					.addOption(BidirectionalType.merge, 'Merge')
+					.addOption(BidirectionalType.externalPriority, 'External Priority')
+					.addOption(BidirectionalType.internalPriority, 'Internal Priority')
+					.setValue(connection.bidirectionalType)
+					.onChange(async (value) => {
+						disableSync(connection, itemHeaderRight);
+						connection.bidirectionalType = value as BidirectionalType;
+						await saveSettings(this.plugin);
+					})
+				);
+			
+			new Setting(advancedContent)
+				.setName('Deleted File Action')
+				.setDesc('Select the action to take when a file is deleted')
+				.addDropdown(dropdown => dropdown
+					.addOption(DeletedFileAction.property, 'Property')
+					.addOption(DeletedFileAction.delete, 'Delete')
+					.setValue(connection.deletedFileAction)
+					.onChange(async (value) => {
+						disableSync(connection, itemHeaderRight);
+						connection.deletedFileAction = value as DeletedFileAction;
+						await saveSettings(this.plugin);
+					})
+				);
+
+			new Setting(advancedContent)
 				.setName('Ignore Hidden Files and Folders')
 				.setDesc('Example: Default hidden folders starting with .')
 				.addToggle(toggle => toggle
 					.setValue(connection.ignoreHiddenFiles)
-					.onChange(value => {
+					.onChange(async (value) => {
 						disableSync(connection, itemHeaderRight);
 						connection.ignoreHiddenFiles = value;
-						this.plugin.saveSettings();
+						await saveSettings(this.plugin);
 					}));
 
 			new Setting(advancedContent)
@@ -272,10 +303,12 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 				.setDesc('Comma-separated list of paths to exclude (ignored if empty)')
 				.addText(text => text
 					.setValue(connection.excludeFolders.join(','))
-					.onChange(value => {
+					.onChange(async (value) => {
 						disableSync(connection, itemHeaderRight);
-						connection.excludeFolders = value.split(',').map(folder => folder.trim());
-						this.plugin.saveSettings();
+						connection.excludeFolders = value.split(',')
+							.map(folder => folder.trim())
+							.filter(folder => folder !== '');
+						await saveSettings(this.plugin);
 					}));
 
 			new Setting(advancedContent)
@@ -283,10 +316,12 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 				.setDesc('Comma-separated list of paths that must be included (overrides exclusions)')
 				.addText(text => text
 					.setValue(connection.includeFolders.join(','))
-					.onChange(value => {
+					.onChange(async (value) => {
 						disableSync(connection, itemHeaderRight);
-						connection.includeFolders = value.split(',').map(folder => folder.trim());
-						this.plugin.saveSettings();
+						connection.includeFolders = value.split(',')
+							.map(folder => folder.trim())
+							.filter(folder => folder !== '');
+						await saveSettings(this.plugin);
 					}));
 
 			new Setting(advancedContent)
@@ -294,10 +329,10 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 				.setDesc('Comma-separated list of file extensions to sync (e.g., .md, .txt)')
 				.addText(text => text
 					.setValue(connection.extensions.join(','))
-					.onChange(value => {
+					.onChange(async (value) => {
 						disableSync(connection, itemHeaderRight);
-						connection.extensions = value.split(',').map(ext => ext.trim());
-						this.plugin.saveSettings();
+						connection.extensions = value.split(',').map(ext => ext.trim().replace(/^\./, ''));
+						await saveSettings(this.plugin);
 					}));
 
 			const actionsContainer = itemBody.createDiv({ cls: 'sync-actions-container' });
@@ -316,10 +351,10 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 					.setButtonText('🗑️ Remove')
 					.setCta()
 					.setClass('remove-connection-button')
-					.onClick(() => {
-						new RemoveConnectionModal(this.app, connection.name, () => {
+					.onClick(async () => {
+						new RemoveConnectionModal(this.app, connection.name, async () => {
 							this.plugin.settings.connections = this.plugin.settings.connections.filter(c => c.id !== connection.id);
-							this.plugin.saveSettings();
+							await saveSettings(this.plugin);
 							this.display();
 						}).open();
 					}));
@@ -345,9 +380,9 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 			.setDesc('Outputs console logs and toast messages on sync events')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.debugMode)
-				.onChange(value => {
+				.onChange(async (value) => {
 					this.plugin.settings.debugMode = value;
-					this.plugin.saveSettings();
+					await saveSettings(this.plugin);
 				}));
 	}
 }
