@@ -72,7 +72,7 @@
 
 ## 2025-04-23 : Rebuilding 시작
 
-- [ ] SyncExternalManager
+- [x] SyncExternalManager
   - [x] Method : handleAddFile
   - [x] Method : handleChangeFile
     - [x] handleUserChangeMd
@@ -80,6 +80,24 @@
   - [x] Method : handleDeleteFile
   - [x] Method : handleAddFolder
   - [x] Method : handleDeleteFolder
+- [x] SyncInternalManager
+  - [x] SyncInternalAddEvent
+    - [x] handleUserAddFile
+    - [x] handleUserAddMdBlank
+    - [x] handleUserAddMdContent
+    - [x] handleAddFolder
+    - [x] handleSysetm~
+  - [x] SyncInternalDeleteEvent
+    - [x] handleUserDeleteMd
+    - [x] handleUserDeleteNotMd
+    - [x] handleUserDeleteFolder
+    - [x] handleSystemDeleteMd
+    - [x] handleSystemDeleteNotMd
+    - [x] handleSystemDeleteFolder
+  - [x] SyncInternalChangeEvent
+- [ ] 콘솔에 있는 에러처리하기
+  
+  
 
   
 

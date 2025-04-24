@@ -1,6 +1,10 @@
 # vscode
 .vscode 
 
+# Note
+Notes
+data
+
 # Intellij
 *.iml
 .idea
