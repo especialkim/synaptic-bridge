@@ -85,7 +85,6 @@ export class ExternalWatcher{
                         }
                     });
 
-                console.log(`[ExternalWatcher] 외부 파일 시스템 완료: ${connection.externalPath} (${paths.length})`);
                 switch(connection.syncType){
                     case SyncType.vaultToExternal:
                         syncManager.initInternalToExternal(connection);

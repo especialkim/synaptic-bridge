@@ -20,7 +20,7 @@ export const DEFAULT_CONNECTIONS : FolderConnectionSettings = {
 	externalPath: '',
 	syncType: SyncType.bidirectional,
 	bidirectionalType: BidirectionalType.merge,
-	deletedFileAction: DeletedFileAction.property,
+	deletedFileAction: DeletedFileAction.delete,
 	ignoreHiddenFiles: true,
 	excludeFolders: [
 		'node_modules',
@@ -51,7 +51,7 @@ export const DEFAULT_CONNECTIONS : FolderConnectionSettings = {
 		'config'
 	],
 	includeFolders: [],
-	extensions: ['.md'],
+	extensions: ['md'],
 	syncEnabled: false
 }
 

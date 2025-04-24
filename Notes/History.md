@@ -97,7 +97,16 @@
   - [x] SyncInternalChangeEvent
 - [ ] 콘솔에 있는 에러처리하기
   
-  
+## 2025-04-25 할일
+
+- SettingUI
+  - [ ] 수동 Sync 버튼
+    - 1회성 동기화 하기
+  - [ ] Remove 누르면
+    - [ ] Enable Sync -> False로 바꾸기
+    - [ ] data 파일도 삭제하기
+  - [ ] Maintenance 모드 숨김처리
+  - [ ] Give me a Coffee
 
   
 
