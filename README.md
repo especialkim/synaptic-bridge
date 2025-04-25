@@ -40,16 +40,14 @@ Markdown Hijacker is an Obsidian plugin that synchronizes markdown and any file 
 
 ### 2. Initial Settings
 
-![Initial Settings Screen](image/01_Initial_Settings.png)
-*Initial settings screen for Markdown Hijacker*
+<img src="image/01_Initial_Settings.png" style="max-width:400px; height:auto;" alt="Initial settings screen for Markdown Hijacker"/>
 
 1. **Global Synchronization**: Turn this ON to enable all synchronization features of the plugin, or OFF to disable them globally.
 2. **Sync Connections**: Click the "+" button to add a new sync connection pair.
 
 ### 3. Folder Mapping Setup
 
-![Add New Sync Connection](image/02_Add_Sync_Connect.png)
-*Adding a new sync connection pair*
+<img src="image/02_Add_Sync_Connect.png" style="max-width:400px; height:auto;" alt="Initial settings screen for Markdown Hijacker"/>
 
 1. Click the "+" button to create a new connection.
 2. Click the title to rename the connection.
@@ -57,14 +55,13 @@ Markdown Hijacker is an Obsidian plugin that synchronizes markdown and any file 
 4. **Internal Path**: Set the relative path within your Vault (use the folder finder button if needed).
 5. **External Path**: Set the absolute path to the external folder to synchronize (use the folder selection button if needed).
 6. **Advanced Settings**: Click here to configure detailed options for this connection.
-7. **Delete Button** : ~~~~
+7. **Delete Button** : Click the trash icon to remove this sync connection.
 
 > **Note:** When you change any option in Folder Mapping Setup or Advanced Settings, the corresponding sync will be automatically disabled for safety. After updating all settings, make sure to re-enable the mapping to resume synchronization.
 
 ### 4. Advanced Settings
 
-![Advanced Settings Screen](image/04_Advanced_Settings.png)
-*Advanced settings for a sync connection*
+<img src="image/04_Advanced_Settings.png" style="max-width:400px; height:auto;" alt="Initial settings screen for Markdown Hijacker"/>
 
 1. **Synchronization Direction**:
     - External→Vault: Import external changes to Vault only
