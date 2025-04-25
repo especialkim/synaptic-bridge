@@ -257,4 +257,14 @@ export class SnapShotService {
             return;
         }
     }
+
+    public deleteSnapshotFile(connection: FolderConnectionSettings): void {
+        const basePath = (this.app.vault.adapter as any).getBasePath?.() || '';
+        const pluginDataPath = pathModule.join(basePath, '.obsidian', 'plugins', 'markdown-hijacker', 'data');
+        const snapshotPath = pathModule.join(pluginDataPath, `${connection.id}.json`);
+        if (fs.existsSync(snapshotPath)) {
+            fs.unlinkSync(snapshotPath);
+            console.log(`[SnapShotService] Snapshot 파일 삭제 완료: ${snapshotPath}`);
+        }
+    }
 }

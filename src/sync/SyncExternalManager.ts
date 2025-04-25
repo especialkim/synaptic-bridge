@@ -18,7 +18,6 @@ export class SyncExternalManager {
     private syncExternalAddEvent: SyncExternalAddEvent;
     private syncExternalDeleteEvent: SyncExternalDeleteEvent;
     private syncExternalChangeEvent: SyncExternalChangeEvent;
-    private syncService: SyncService;
 
     constructor(app: App, plugin: MarkdownHijacker, connection: FolderConnectionSettings){
         this.app = app;
@@ -28,7 +27,6 @@ export class SyncExternalManager {
         this.syncExternalAddEvent = new SyncExternalAddEvent(app, plugin, connection);
         this.syncExternalDeleteEvent = new SyncExternalDeleteEvent(app, plugin, connection);
         this.syncExternalChangeEvent = new SyncExternalChangeEvent(app, plugin, connection);
-        this.syncService = new SyncService(app, plugin);
     }
     
     /* Add File */
@@ -87,9 +85,9 @@ export class SyncExternalManager {
 
     /* Change File */
     private async checkChangeFileType(path: string){
-        const relativePath = this.syncService.getRelativePath(path, this.connection);
-        const internalAbsolutePath = this.syncService.getInternalAbsolutePath(relativePath, this.connection);
-        const didChangeUser = !(await this.syncService.isSameFile(internalAbsolutePath, path));
+        const relativePath = this.plugin.syncService.getRelativePath(path, this.connection);
+        const internalAbsolutePath = this.plugin.syncService.getInternalAbsolutePath(relativePath, this.connection);
+        const didChangeUser = !(await this.plugin.syncService.isSameFile(internalAbsolutePath, path));
         const isMarkdown = path.endsWith('.md');
 
         if(isMarkdown && didChangeUser) return ChangeFileType.USER_CHANGE_MD;
@@ -134,8 +132,8 @@ export class SyncExternalManager {
         let didUserDelete = true;
         const isMarkdown = path.endsWith('.md');
 
-        const relativePath = this.syncService.getRelativePath(path, this.connection);
-        const internalPath = this.syncService.getInternalPath(relativePath, this.connection);
+        const relativePath = this.plugin.syncService.getRelativePath(path, this.connection);
+        const internalPath = this.plugin.syncService.getInternalPath(relativePath, this.connection);
 
         const internalFile = this.app.vault.getFileByPath(internalPath);
         if(!internalFile) didUserDelete = false;
@@ -181,8 +179,8 @@ export class SyncExternalManager {
 
     /* Delete Folder */
     private checkDeleteFolderType(path: string){
-        const relativePath = this.syncService.getRelativePath(path, this.connection);
-        const internalPath = this.syncService.getInternalPath(relativePath, this.connection);
+        const relativePath = this.plugin.syncService.getRelativePath(path, this.connection);
+        const internalPath = this.plugin.syncService.getInternalPath(relativePath, this.connection);
 
         const internalFolder = this.app.vault.getFolderByPath(internalPath);
         if(!internalFolder) return DeleteFolderType.SYSTEM_DELETE_FOLDER;
@@ -215,7 +213,7 @@ export class SyncExternalManager {
 
     private checkAddFileType(path: string){
         const externalPath = path;
-        const relativePath = this.syncService.getRelativePath(externalPath, this.connection);
+        const relativePath = this.plugin.syncService.getRelativePath(externalPath, this.connection);
         const internalPath = this.connection.internalPath + relativePath;
         
         let didUserAdd = true;

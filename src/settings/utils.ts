@@ -1,4 +1,4 @@
-import { Notice, Plugin } from "obsidian";
+import { Notice, Plugin, Setting, ToggleComponent } from "obsidian";
 import { DEFAULT_SETTINGS } from "./MarkdownHijackerSettingUI";
 import { FolderConnectionSettings } from "./types";
 import { isExistDirectory } from "src/utils/pathUtils";
@@ -27,15 +27,12 @@ export function validateConnectionPaths(connection: FolderConnectionSettings): {
 /**
  * 연결의 동기화를 비활성화하고 UI 토글 상태도 false로 반영
  */
-export function disableSync(connection: FolderConnectionSettings, itemHeaderRight: HTMLElement): void {
+export function disableSync(connection: FolderConnectionSettings, syncToggleComponent: ToggleComponent): void {
+    // 여기서 syncToggle 에 처리하면 안되나?
+
     if(!connection.syncEnabled) return
-    
     connection.syncEnabled = false;
-    
-    const checkboxContainer = itemHeaderRight.querySelector('.checkbox-container');
-    if (checkboxContainer?.classList.contains('is-enabled')) {
-        checkboxContainer.classList.remove('is-enabled');
-    }
+    syncToggleComponent.setValue(false);
     new Notice("Sync disabled. Re-enable after changes.");
 }
 

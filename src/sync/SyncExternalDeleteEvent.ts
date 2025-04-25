@@ -11,13 +11,11 @@ export class SyncExternalDeleteEvent {
     private app: App;
     private plugin: MarkdownHijacker;
     private connection: FolderConnectionSettings;
-    private syncService: SyncService;
 
     constructor(app: App, plugin: MarkdownHijacker, connection: FolderConnectionSettings){
         this.app = app;
         this.plugin = plugin;
         this.connection = connection;
-        this.syncService = new SyncService(app, plugin);
     }
 
     /* Delete File */
@@ -25,9 +23,9 @@ export class SyncExternalDeleteEvent {
         console.log(`[SyncExternalDeleteEvent] handleUserDeleteMd: ${path}`);
 
         if(this.connection.deletedFileAction === DeletedFileAction.property){
-            await this.syncService.deleteFileActionPropertyOnExternal(path, this.connection);
+            await this.plugin.syncService.deleteFileActionPropertyOnExternal(path, this.connection);
         }else{
-            await this.syncService.deleteFileActionDeleteOnExternal(path, this.connection);
+            await this.plugin.syncService.deleteFileActionDeleteOnExternal(path, this.connection);
         }
     }
 
@@ -35,22 +33,22 @@ export class SyncExternalDeleteEvent {
         console.log(`[SyncExternalDeleteEvent] handleUserDeleteNotMd: ${path}`);
 
         if(this.connection.deletedFileAction === DeletedFileAction.property){
-            await this.syncService.deleteFileActionPropertyOnExternal(path, this.connection, false);
+            await this.plugin.syncService.deleteFileActionPropertyOnExternal(path, this.connection, false);
         }else{
-            await this.syncService.deleteFileActionDeleteOnExternal(path, this.connection);
+            await this.plugin.syncService.deleteFileActionDeleteOnExternal(path, this.connection);
         }
     }
     
     public async handleSystemDeleteMd(path: string){
         if(path.includes('❌ ')){
-            this.syncService.deleteFileActionDeleteOnExternal(path, this.connection);
+            this.plugin.syncService.deleteFileActionDeleteOnExternal(path, this.connection);
         }
         return;
     }
 
     public async handleSystemDeleteNotMd(path: string){
         if(path.includes('❌ ')){
-            this.syncService.deleteFileActionDeleteOnExternal(path, this.connection);
+            this.plugin.syncService.deleteFileActionDeleteOnExternal(path, this.connection);
         }
         return;
     }
@@ -60,9 +58,9 @@ export class SyncExternalDeleteEvent {
         console.log(`[SyncExternalDeleteEvent] handleUserDeleteFolder: ${path}`);
 
         if(this.connection.deletedFileAction === DeletedFileAction.property){
-            await this.syncService.deleteFolderActionPropertyOnExternal(path, this.connection);
+            await this.plugin.syncService.deleteFolderActionPropertyOnExternal(path, this.connection);
         }else{
-            await this.syncService.deleteFolderActionDeleteOnExternal(path, this.connection);
+            await this.plugin.syncService.deleteFolderActionDeleteOnExternal(path, this.connection);
         }
     }
 

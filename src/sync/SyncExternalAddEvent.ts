@@ -8,26 +8,24 @@ export class SyncExternalAddEvent {
     private app: App;
     private plugin: MarkdownHijacker;
     private connection: FolderConnectionSettings;
-    private syncService: SyncService;
 
     constructor(app: App, plugin: MarkdownHijacker, connection: FolderConnectionSettings) {
         this.app = app;
         this.plugin = plugin;
         this.connection = connection;
-        this.syncService = new SyncService(app, plugin);
     }
     
     /* Add File */
     public async handleUserAddFile(path: string) {
         console.log(`[SyncExternalAddEvent] handleUserAddFile: ${path}`);
-        await this.syncService.syncFileToInternal(path, this.connection);
+        await this.plugin.syncService.syncFileToInternal(path, this.connection);
     }
 
     public async handleUserAddMdBlank(path: string) {
         console.log(`[SyncExternalAddEvent] handleUserAddMdBlank: ${path}`);
         try {
-            const frontmatter = this.syncService.generateFrontmatter(path, this.connection);
-            await this.syncService.updateExternalFileFrontmatter(path, frontmatter, this.connection);
+            const frontmatter = this.plugin.syncService.generateFrontmatter(path, this.connection);
+            await this.plugin.syncService.updateExternalFileFrontmatter(path, frontmatter, this.connection);
         } catch (error) {
             console.error(`Error generating frontmatter: ${error}`);
             return;
@@ -38,8 +36,8 @@ export class SyncExternalAddEvent {
         console.log(`[SyncExternalAddEvent] handleUserAddMdContent: ${path}`);
         /* 1. 외부 파일에 frontmatter 추가 */
         try {
-            const frontmatter = this.syncService.generateFrontmatter(path, this.connection);
-            await this.syncService.updateExternalFileFrontmatter(path, frontmatter, this.connection);
+            const frontmatter = this.plugin.syncService.generateFrontmatter(path, this.connection);
+            await this.plugin.syncService.updateExternalFileFrontmatter(path, frontmatter, this.connection);
         } catch (error) {
             console.error(`Error generating frontmatter: ${error}`);
             return;
@@ -63,8 +61,8 @@ export class SyncExternalAddEvent {
         console.log(`[SyncExternalAddEvent] handleAddFolder: ${path}`);
 
         // 상대 경로 계산
-        const relativePath = this.syncService.getRelativePath(path, this.connection);
-        const internalPath = this.syncService.getInternalPath(relativePath, this.connection);
+        const relativePath = this.plugin.syncService.getRelativePath(path, this.connection);
+        const internalPath = this.plugin.syncService.getInternalPath(relativePath, this.connection);
         
         try {
             // 내부 폴더 생성

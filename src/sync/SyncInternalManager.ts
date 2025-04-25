@@ -8,7 +8,6 @@ import * as fs from 'fs';
 import * as pathModule from 'path';
 import { delay } from "src/utils/delay";
 import { AddFileType, ChangeFileType, DeleteFileType, DeleteFolderType, SyncInternalManagerState } from "./types/internalSyncTypes";
-import { SyncService } from "./SyncService";
 import { SyncInternalAddEvent } from "./SyncInternalAddEvent";
 import { SyncInternalChangeEvent } from "./SyncInternalChangeEvent";
 import { SyncInternalDeleteEvent } from "./SyncInternalDeleteEvent";
@@ -40,7 +39,6 @@ export class SyncInternalManager {
     private connections: FolderConnectionSettings[];
     private state: SyncInternalManagerState = {};
     private syncingFiles: Set<string> = new Set(); // 동기화 중인 파일 추적
-    private syncService: SyncService;
     private syncInternalAddEvent: SyncInternalAddEvent;
     private syncInternalChangeEvent: SyncInternalChangeEvent;
     private syncInternalDeleteEvent: SyncInternalDeleteEvent;
@@ -53,7 +51,6 @@ export class SyncInternalManager {
         this.plugin = plugin;
         this.connections = plugin.settings.connections;
         this.state = {};
-        this.syncService = new SyncService(app, plugin);
         this.syncInternalAddEvent = new SyncInternalAddEvent(app, plugin);
         this.syncInternalChangeEvent = new SyncInternalChangeEvent(app, plugin);
         this.syncInternalDeleteEvent = new SyncInternalDeleteEvent(app, plugin);
@@ -221,8 +218,8 @@ export class SyncInternalManager {
 
     private async checkDeleteFolderType(path: string, connection: FolderConnectionSettings){
         const internalPath = path;
-        const relativePath = this.syncService.getRelativePath(path, connection);
-        const externalPath = this.syncService.getExternalPath(relativePath, connection);
+        const relativePath = this.plugin.syncService.getRelativePath(path, connection);
+        const externalPath = this.plugin.syncService.getExternalPath(relativePath, connection);
 
         if(!fs.existsSync(externalPath)) return DeleteFolderType.SYSTEM_DELETE_FOLDER;
         return DeleteFolderType.USER_DELETE_FOLDER;
@@ -243,7 +240,7 @@ export class SyncInternalManager {
 
     private async checkAddFileType(path: string, connection: FolderConnectionSettings){
         const internalPath = path;
-        const relativePath = this.syncService.getRelativePath(path, connection);
+        const relativePath = this.plugin.syncService.getRelativePath(path, connection);
         const externalPath = pathModule.join(connection.externalPath, relativePath);
 
         let didUserAdd = true;
@@ -266,11 +263,11 @@ export class SyncInternalManager {
     private async checkChangeFileType(path: string, connection: FolderConnectionSettings){
         
         const internalPath = path;
-        const relativePath = this.syncService.getRelativePath(internalPath, connection);
-        const internalAbsolutePath = this.syncService.getInternalAbsolutePath(relativePath, connection);
-        const externalPath = this.syncService.getExternalPath(relativePath, connection);
+        const relativePath = this.plugin.syncService.getRelativePath(internalPath, connection);
+        const internalAbsolutePath = this.plugin.syncService.getInternalAbsolutePath(relativePath, connection);
+        const externalPath = this.plugin.syncService.getExternalPath(relativePath, connection);
 
-        const didChangeUser = !(await this.syncService.isSameFile(internalAbsolutePath, externalPath));
+        const didChangeUser = !(await this.plugin.syncService.isSameFile(internalAbsolutePath, externalPath));
         const isMarkdown = internalPath.endsWith('.md');
 
         if(isMarkdown && didChangeUser) return ChangeFileType.USER_CHANGE_MD;
@@ -284,7 +281,6 @@ export class SyncInternalManager {
         if(!tFile) return;
         
         const context = await this.app.vault.read(tFile);
-        console.log(`[SyncInternalManager] context: ${context}`);
         return context.trim() === '';
     }
 
@@ -292,7 +288,7 @@ export class SyncInternalManager {
         let didUserDelete = true;
         const isMarkdown = path.endsWith('.md');
 
-        const relativePath = this.syncService.getRelativePath(path, connection);
+        const relativePath = this.plugin.syncService.getRelativePath(path, connection);
         const externalPath = pathModule.join(connection.externalPath, relativePath);
 
         const externalFileExists = fs.existsSync(externalPath);

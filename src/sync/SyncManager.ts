@@ -2,9 +2,6 @@ import { App } from "obsidian";
 import MarkdownHijacker from "main";
 import { FolderConnectionSettings } from "../settings/types";
 import { SyncExternalManager } from "./SyncExternalManager";
-import { SyncInternalManager } from "./SyncInternalManager";
-import { SnapShotService } from "./SnapShotService";
-import { SyncService } from "./SyncService";
 
 export enum RecentFileType {
     EXTERNAL = "externalFile",
@@ -13,23 +10,21 @@ export enum RecentFileType {
 
 export class SyncManager {
 
-    private snapShotService: SnapShotService;
+    private app: App;
+    private plugin: MarkdownHijacker;
     private connection: FolderConnectionSettings;
     private syncExternalManager: SyncExternalManager;
-    private syncInternalManager: SyncInternalManager;
-    private syncService: SyncService;
 
     constructor(app: App, plugin: MarkdownHijacker, connection: FolderConnectionSettings){
-        this.snapShotService = new SnapShotService(app, plugin);
+        this.app = app;
+        this.plugin = plugin;
         this.connection = connection;
         this.syncExternalManager = new SyncExternalManager(app, plugin, connection);
-        this.syncInternalManager = new SyncInternalManager(app, plugin);
-        this.syncService = new SyncService(app, plugin);
     }
 
     public async initExternalToInternal(paths: string[]){
-        const existingExternalSnapShots = paths.map(path => this.snapShotService.getCurrentStateSnapshot(this.connection, path));
-        const snapShots = this.snapShotService.loadSnapshot(this.connection).linkedFiles; 
+        const existingExternalSnapShots = paths.map(path => this.plugin.snapShotService.getCurrentStateSnapshot(this.connection, path));
+        const snapShots = this.plugin.snapShotService.loadSnapshot(this.connection).linkedFiles; 
 
         // 1. Map을 만들어서 빠른 비교를 가능하게 함
         const pastMap = new Map(snapShots.map(s => [s.relativePath, s]));
@@ -39,14 +34,14 @@ export class SyncManager {
         const newSnapShots = existingExternalSnapShots.filter(s => !pastMap.has(s.relativePath));
         if (newSnapShots.length > 0) {
             this.syncExternalManager.handleAddFiles(newSnapShots
-                .map(s => this.syncService.getExternalPath(s.relativePath, this.connection)));
+                .map(s => this.plugin.syncService.getExternalPath(s.relativePath, this.connection)));
         }
 
         // 3. Deleted: 과거에는 있지만 현재에는 없는 파일
         const deletedSnapShots = snapShots.filter(s => !currentMap.has(s.relativePath));
         if (deletedSnapShots.length > 0) {
             this.syncExternalManager.handleDeleteFiles(deletedSnapShots
-                .map(s => this.syncService.getExternalPath(s.relativePath, this.connection)));
+                .map(s => this.plugin.syncService.getExternalPath(s.relativePath, this.connection)));
         }
 
         // 4. Updated: relativePath는 같지만 externalModified가 다른 파일
@@ -56,15 +51,15 @@ export class SyncManager {
         });
         if (updatedSnapShots.length > 0) {
             this.syncExternalManager.handleChangeFiles(updatedSnapShots
-                .map(s => this.syncService.getExternalPath(s.relativePath, this.connection)));
+                .map(s => this.plugin.syncService.getExternalPath(s.relativePath, this.connection)));
         }
     }
 
     public async initInternalToExternal(connection: FolderConnectionSettings) {
         // 1. 현재 internal에 실제로 존재하는 파일의 SnapshotFile 목록 (비동기)
-        const existingInternalSnapshots = await this.snapShotService.getCurrentStateSnapShotOfInternalRoot(connection);
+        const existingInternalSnapshots = await this.plugin.snapShotService.getCurrentStateSnapShotOfInternalRoot(connection);
         // 2. 과거(마지막 저장된) internal 스냅샷
-        const lastSnapshots = this.snapShotService.loadSnapshot(connection).linkedFiles;
+        const lastSnapshots = this.plugin.snapShotService.loadSnapshot(connection).linkedFiles;
     
         // 3. Map을 만들어서 빠른 비교
         const pastMap = new Map(lastSnapshots.map(s => [s.relativePath, s]));
@@ -73,8 +68,8 @@ export class SyncManager {
         // 4. New: 현재에는 있지만 과거에는 없는 파일
         const newSnapshots = existingInternalSnapshots.filter(s => !pastMap.has(s.relativePath));
         if (newSnapshots.length > 0) {
-            await this.syncInternalManager.handleAddFiles(
-                newSnapshots.map(s => this.syncService.getInternalPath(s.relativePath, connection)),
+            await this.plugin.syncInternalManager.handleAddFiles(
+                newSnapshots.map(s => this.plugin.syncService.getInternalPath(s.relativePath, connection)),
                 connection
             );
         }
@@ -82,8 +77,8 @@ export class SyncManager {
         // 5. Deleted: 과거에는 있지만 현재에는 없는 파일
         const deletedSnapshots = lastSnapshots.filter(s => !currentMap.has(s.relativePath));
         if (deletedSnapshots.length > 0) {
-            await this.syncInternalManager.handleDeleteFiles(
-                deletedSnapshots.map(s => this.syncService.getInternalPath(s.relativePath, connection)),
+            await this.plugin.syncInternalManager.handleDeleteFiles(
+                deletedSnapshots.map(s => this.plugin.syncService.getInternalPath(s.relativePath, connection)),
                 connection
             );
         }
@@ -94,8 +89,8 @@ export class SyncManager {
             return past && s.internalModified !== past.internalModified;
         });
         if (updatedSnapshots.length > 0) {
-            await this.syncInternalManager.handleChangeFiles(
-                updatedSnapshots.map(s => this.syncService.getInternalPath(s.relativePath, connection)),
+            await this.plugin.syncInternalManager.handleChangeFiles(
+                updatedSnapshots.map(s => this.plugin.syncService.getInternalPath(s.relativePath, connection)),
                 connection
             );
         }
@@ -103,11 +98,11 @@ export class SyncManager {
 
     public async initBidirectional(paths: string[]) {
         // 1. 외부의 현재 상태
-        const existingExternalSnapShots = paths.map(path => this.snapShotService.getCurrentStateSnapshot(this.connection, path));
+        const existingExternalSnapShots = paths.map(path => this.plugin.snapShotService.getCurrentStateSnapshot(this.connection, path));
         // 2. 내부의 현재 상태 (비동기)
-        const existingInternalSnapShots = await this.snapShotService.getCurrentStateSnapShotOfInternalRoot(this.connection);
+        const existingInternalSnapShots = await this.plugin.snapShotService.getCurrentStateSnapShotOfInternalRoot(this.connection);
         // 3. 과거 스냅샷
-        const snapShots = this.snapShotService.loadSnapshot(this.connection).linkedFiles;
+        const snapShots = this.plugin.snapShotService.loadSnapshot(this.connection).linkedFiles;
     
         // Map 생성 (relativePath 기준)
         const externalMap = new Map(existingExternalSnapShots.map(s => [s.relativePath, s]));
@@ -167,36 +162,44 @@ export class SyncManager {
                 toDeleteBoth.push(s.relativePath);
             }
         }
+
+        console.log(`[SyncManager] toAddToExternal: ${toAddToExternal}`);
+        console.log(`[SyncManager] toAddToInternal: ${toAddToInternal}`);
+        console.log(`[SyncManager] toUpdateExternal: ${toUpdateExternal}`);
+        console.log(`[SyncManager] toUpdateInternal: ${toUpdateInternal}`);
+        console.log(`[SyncManager] toDeleteExternal: ${toDeleteExternal}`);
+        console.log(`[SyncManager] toDeleteInternal: ${toDeleteInternal}`);
+        console.log(`[SyncManager] toDeleteBoth: ${toDeleteBoth}`);
     
         // 실제 동기화 처리 (예시)
         if (toAddToExternal.length > 0) {
             // 내부에서 외부로 추가
-            await this.syncInternalManager.handleAddFiles(toAddToExternal.map(s => this.syncService.getInternalPath(s, this.connection)), this.connection);
+            await this.plugin.syncInternalManager.handleAddFiles(toAddToExternal.map(s => this.plugin.syncService.getInternalPath(s, this.connection)), this.connection);
         }
         if (toAddToInternal.length > 0) {
             // 외부에서 내부로 추가
-            await this.syncExternalManager.handleAddFiles(toAddToInternal.map(s => this.syncService.getExternalPath(s, this.connection)));
+            await this.syncExternalManager.handleAddFiles(toAddToInternal.map(s => this.plugin.syncService.getExternalPath(s, this.connection)));
         }
         if (toUpdateExternal.length > 0) {
             // 내부에서 외부로 업데이트
-            await this.syncInternalManager.handleChangeFiles(toUpdateExternal.map(s => this.syncService.getInternalPath(s, this.connection)), this.connection);
+            await this.plugin.syncInternalManager.handleChangeFiles(toUpdateExternal.map(s => this.plugin.syncService.getInternalPath(s, this.connection)), this.connection);
         }
         if (toUpdateInternal.length > 0) {
             // 외부에서 내부로 업데이트
-            await this.syncExternalManager.handleChangeFiles(toUpdateInternal.map(s => this.syncService.getExternalPath(s, this.connection)));
+            await this.syncExternalManager.handleChangeFiles(toUpdateInternal.map(s => this.plugin.syncService.getExternalPath(s, this.connection)));
         }
         if (toDeleteExternal.length > 0) {
             // 외부에 없고 내부에 있음 -> 외부에서 삭제 이벤트
-            await this.syncExternalManager.handleDeleteFiles(toDeleteExternal.map(s => this.syncService.getExternalPath(s, this.connection)));
+            await this.syncExternalManager.handleDeleteFiles(toDeleteExternal.map(s => this.plugin.syncService.getExternalPath(s, this.connection)));
         }
         if (toDeleteInternal.length > 0) {
             // 내부에 없고 외부에 있음 -> 내부에서 삭제 이벤트
-            await this.syncInternalManager.handleDeleteFiles(toDeleteInternal.map(s => this.syncService.getInternalPath(s, this.connection)), this.connection);
+            await this.plugin.syncInternalManager.handleDeleteFiles(toDeleteInternal.map(s => this.plugin.syncService.getInternalPath(s, this.connection)), this.connection);
         }
         if (toDeleteBoth.length > 0) {
             // 양쪽 모두 없는 경우: snapshot에서만 정리
             console.log(`[SyncManager] 양쪽 모두 없는 경우: ${toDeleteBoth}`);
-            await this.snapShotService.removeSnapShots(this.connection, toDeleteBoth);
+            await this.plugin.snapShotService.removeSnapShots(this.connection, toDeleteBoth);
         }
     }
 

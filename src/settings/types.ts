@@ -37,4 +37,4 @@ export interface MarkdownHijackerSettings {
 	syncInterval: number;                // 동기화 간격 (밀리초 단위)
 	debugMode: boolean;                  // 디버그 모드 (콘솔 로그 출력용)
 	connections: FolderConnectionSettings[];         // 폴더 동기화 매핑 목록
-};
+}; 

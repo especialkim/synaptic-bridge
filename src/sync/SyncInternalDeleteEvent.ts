@@ -1,18 +1,15 @@
 import MarkdownHijacker from "main";
 import { App } from "obsidian";
 import { DeletedFileAction, FolderConnectionSettings } from "src/settings/types";
-import { SyncService } from "./SyncService";
 
 export class SyncInternalDeleteEvent {
 
     private app: App;
     private plugin: MarkdownHijacker;
-    private syncService: SyncService;
     
     constructor(app: App, plugin: MarkdownHijacker){
         this.app = app;
         this.plugin = plugin;
-        this.syncService = new SyncService(app, plugin);
     }
     
     /* User Delete File */
@@ -20,9 +17,9 @@ export class SyncInternalDeleteEvent {
         console.log(`[SyncInternalDeleteEvent] handleUserDeleteMd: ${path}`);
 
         if(connection.deletedFileAction === DeletedFileAction.property){
-            await this.syncService.deleteFileActionPropertyOnInternal(path, connection);
+            await this.plugin.syncService.deleteFileActionPropertyOnInternal(path, connection);
         }else{
-            await this.syncService.deleteFileActionDeleteOnInternal(path, connection);
+            await this.plugin.syncService.deleteFileActionDeleteOnInternal(path, connection);
         }
     }
 
@@ -30,23 +27,23 @@ export class SyncInternalDeleteEvent {
         console.log(`[SyncInternalDeleteEvent] handleUserDeleteNotMd: ${path}`);
 
         if(connection.deletedFileAction === DeletedFileAction.property){
-            await this.syncService.deleteFileActionPropertyOnInternal(path, connection, false);
+            await this.plugin.syncService.deleteFileActionPropertyOnInternal(path, connection, false);
         }else{
-            await this.syncService.deleteFileActionDeleteOnInternal(path, connection);
+            await this.plugin.syncService.deleteFileActionDeleteOnInternal(path, connection);
         }
     }
 
     /* System Delete File : '❌ '옵션일때만 처리 */
     public async handleSystemDeleteMd(path: string, connection: FolderConnectionSettings){
         if(path.includes('❌ ')){
-            this.syncService.deleteFileActionDeleteOnInternal(path, connection);
+            this.plugin.syncService.deleteFileActionDeleteOnInternal(path, connection);
         }
         return;
     }
 
     public async handleSystemDeleteNotMd(path: string, connection: FolderConnectionSettings){
         if(path.includes('❌ ')){
-            this.syncService.deleteFileActionDeleteOnInternal(path, connection);
+            this.plugin.syncService.deleteFileActionDeleteOnInternal(path, connection);
         }
         return;
     }
@@ -56,9 +53,9 @@ export class SyncInternalDeleteEvent {
         console.log(`[SyncInternalDeleteEvent] handleUserDeleteFolder: ${path}`);
         
         if(connection.deletedFileAction === DeletedFileAction.property){
-            await this.syncService.deleteFolderActionPropertyOnInternal(path, connection);
+            await this.plugin.syncService.deleteFolderActionPropertyOnInternal(path, connection);
         }else{
-            await this.syncService.deleteFolderActionDeleteOnInternal(path, connection);
+            await this.plugin.syncService.deleteFolderActionDeleteOnInternal(path, connection);
         }
     }
 
@@ -71,11 +68,11 @@ export class SyncInternalDeleteEvent {
     /* Force Delete */
     public async forceDeleteFile(path: string, connection: FolderConnectionSettings){
         console.log(`[SyncInternalDeleteEvent] forceDeleteFile: ${path}`);
-        await this.syncService.deleteFileActionDeleteOnInternal(path, connection);
+        await this.plugin.syncService.deleteFileActionDeleteOnInternal(path, connection);
     }
 
     public async forceDeleteFolder(path: string, connection: FolderConnectionSettings){
         console.log(`[SyncInternalDeleteEvent] forceDeleteFolder: ${path}`);
-        await this.syncService.deleteFolderActionDeleteOnInternal(path, connection);
+        await this.plugin.syncService.deleteFolderActionDeleteOnInternal(path, connection);
     }
 }

@@ -4,19 +4,16 @@ import { FolderConnectionSettings } from "src/settings/types";
 import * as pathModule from 'path';
 import * as fs from 'fs/promises';
 import * as fsSync from 'fs';
-import { SnapShotService } from "./SnapShotService";
 import { getVaultName } from "./utils";
 import matter from "gray-matter";
 
 export class SyncService {
     private app: App;
     private plugin: MarkdownHijacker;
-    private snapShotService: SnapShotService;
 
     constructor(app: App, plugin: MarkdownHijacker){
         this.app = app;
         this.plugin = plugin;
-        this.snapShotService = new SnapShotService(app, plugin);
     }
     
     public async syncFileToInternal(path: string, connection: FolderConnectionSettings): Promise<void> {
@@ -43,7 +40,7 @@ export class SyncService {
         /* SnapShot */
         try {
             console.log(`[SyncService: syncFileToInternal] updateSnapshot: ${path}`);
-            this.snapShotService.updateSnapshot(connection, path);
+            this.plugin.snapShotService.updateSnapshot(connection, path);
         } catch (error) {
             console.error(`[SyncService: syncFileToInternal] Error updating snapshot: ${error}`);
         }
@@ -74,7 +71,7 @@ export class SyncService {
         // SnapShot
         try {
             console.log(`[SyncService: syncFileToExternal] updateSnapshot: ${externalFilePath}`);
-            this.snapShotService.updateSnapshot(connection, externalFilePath);
+            this.plugin.snapShotService.updateSnapshot(connection, externalFilePath);
         } catch (error) {
             console.error(`[SyncService: syncFileToExternal] Error updating snapshot: ${error}`);
         }
@@ -120,12 +117,16 @@ export class SyncService {
             const { data, content } = this.readFrontmatterAndContent(path);
             const mergedFrontmatter = { ...data, ...frontmatter };
             const updatedContent = matter.stringify(content, mergedFrontmatter);
-            if (originalContent !== updatedContent) {
-                fsSync.writeFileSync(path, updatedContent);
-                console.log('[updateExternalFileFrontmatter] 파일 업데이트 완료:', path);
-            } else {
-                console.log('[updateExternalFileFrontmatter] 변경사항 없음:', path);
-            }
+            
+            fsSync.writeFileSync(path, updatedContent);
+            console.log('[updateExternalFileFrontmatter] 파일 업데이트 완료:', path);
+
+            // if (originalContent !== updatedContent) {
+            //     fsSync.writeFileSync(path, updatedContent);
+            //     console.log('[updateExternalFileFrontmatter] 파일 업데이트 완료:', path);
+            // } else {
+            //     console.log('[updateExternalFileFrontmatter] 변경사항 없음:', path);
+            // }
         } catch (error) {
             console.error(`Error updating frontmatter: ${error}`);
         }
@@ -194,8 +195,8 @@ export class SyncService {
                 await this.updateExternalFileFrontmatter(newTargetPath, frontmatter, connection);
             }
         }
-        this.snapShotService.deleteSnapShot(connection, relativePath);
-        this.snapShotService.deleteSnapShot(connection, newRelativePath);
+        this.plugin.snapShotService.deleteSnapShot(connection, relativePath);
+        this.plugin.snapShotService.deleteSnapShot(connection, newRelativePath);
     }
 
     public async deleteFileActionDeleteOnExternal(path: string, connection: FolderConnectionSettings) {
@@ -205,7 +206,7 @@ export class SyncService {
             fsSync.unlinkSync(internalAbsolutePath);
         }
         // 스냅샷 업데이트
-        this.snapShotService.deleteSnapShot(connection, relativePath);
+        this.plugin.snapShotService.deleteSnapShot(connection, relativePath);
     }
 
     public async deleteFileActionDeleteOnInternal(path: string, connection: FolderConnectionSettings) {
@@ -215,7 +216,7 @@ export class SyncService {
             fsSync.unlinkSync(externalPath);
         }
         // 스냅샷 업데이트
-        this.snapShotService.deleteSnapShot(connection, relativePath);
+        this.plugin.snapShotService.deleteSnapShot(connection, relativePath);
     }
 
     public async deleteFolderActionPropertyOnExternal(path: string, connection: FolderConnectionSettings) {

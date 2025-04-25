@@ -5,7 +5,9 @@ import { InternalWatcher } from './src/watchers/InternalWatcher';
 import { MarkdownHijackerSettingUI, MarkdownHijackerSettings, DEFAULT_SETTINGS } from 'src/settings';
 import { StatusBarManager } from 'src/statusBar/StatusBarManager';
 import { ExternalWatcher } from 'src/watchers/ExternalWatcher';
-import { SyncManager } from 'src/sync/SyncManager';
+import { SnapShotService } from 'src/sync/SnapShotService';
+import { SyncService } from 'src/sync/SyncService';
+import { SyncInternalManager } from 'src/sync/SyncInternalManager';
 
 // 이벤트 타입 확장
 declare module 'obsidian' {
@@ -30,6 +32,9 @@ export default class MarkdownHijacker extends Plugin {
 	monitoringInternalChanges: boolean = false;
 	watchers: Map<string, fs.FSWatcher> = new Map();
 	
+	/* SnapShot */
+	snapShotService: SnapShotService;
+
 	/* Rebuilding */
 	statusBar: StatusBarManager;
 
@@ -37,8 +42,11 @@ export default class MarkdownHijacker extends Plugin {
 	internalWatcher: InternalWatcher;
 	externalWatcher: ExternalWatcher;
 
-	/* Sync */
-	syncManager: SyncManager;
+	/* Sync Services */
+	syncService: SyncService;
+
+	/* Internal Sync Manager */
+	syncInternalManager: SyncInternalManager;
 
 	async onload() {
 		console.log('MarkdownHijacker plugin loaded');
@@ -48,6 +56,13 @@ export default class MarkdownHijacker extends Plugin {
 
 		/* Setting UI */
 		this.addSettingTab(new MarkdownHijackerSettingUI(this.app, this));
+
+		/* Sync Services */
+		this.snapShotService = new SnapShotService(this.app, this);
+		this.syncService = new SyncService(this.app, this);
+
+		/* Internal Sync Manager */
+		this.syncInternalManager = new SyncInternalManager(this.app, this);
 
 		/* Status Bar */
 		this.statusBar = new StatusBarManager(this);

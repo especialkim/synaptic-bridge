@@ -1,10 +1,11 @@
 import MarkdownHijacker from "../../main";
-import { App, Notice, PluginSettingTab, setIcon, Setting } from "obsidian";
+import { App, Notice, PluginSettingTab, setIcon, Setting, ToggleComponent } from "obsidian";
 import { BidirectionalType, DeletedFileAction, FolderConnectionSettings, MarkdownHijackerSettings, SyncType } from "./types";
 import { openFolderSelectionDialog } from "../utils/openFolderSelectionDialog";
 import { openVaultFolderSelectionDialog } from "src/utils/openVaultFolderSelectionDialog";
 import { RemoveConnectionModal } from "./modal";
 import { disableSync, saveSettings, validateConnectionPaths } from "./utils";
+import { FolderSuggest } from "src/suggest/FolderSuggest";
 
 export const DEFAULT_SETTINGS : MarkdownHijackerSettings = {
     enableGlobalSync: false,
@@ -87,15 +88,15 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 					this.plugin.statusBar.update();
 				}));
 
-		new Setting(globalSection)
-			.setName('Sync Interval')
-			.setDesc('The interval for checking external folder changes (in ms)')
-			.addText(text => text
-				.setValue(this.plugin.settings.syncInterval.toString())
-				.onChange(async(value) => {
-					this.plugin.settings.syncInterval = parseInt(value);
-					await saveSettings(this.plugin);
-				}));
+		// new Setting(globalSection)
+		// 	.setName('Sync Interval')
+		// 	.setDesc('The interval for checking external folder changes (in ms)')
+		// 	.addText(text => text
+		// 		.setValue(this.plugin.settings.syncInterval.toString())
+		// 		.onChange(async(value) => {
+		// 			this.plugin.settings.syncInterval = parseInt(value);
+		// 			await saveSettings(this.plugin);
+		// 		}));
 
 				
 		/* Pair Settings */
@@ -136,6 +137,7 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 				});
 				input.addClass("sync-name-input");
 				input.focus();
+				input.select();
 				input.onblur = async () => {
 					const newName = input.value.trim() || "Untitled";
 					connection.name = newName;
@@ -149,9 +151,12 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 
 			itemHeaderLeft.createEl('span', { text: connection.syncType, cls: 'sync-connection-direction' });
 
+			let syncToggleComponent: ToggleComponent
+
 			new Setting(itemHeaderRight)
 				.setName('Sync Status')
-				.addToggle(toggle => 
+				.addToggle(toggle => {
+					syncToggleComponent = toggle;
 					toggle
 						.setValue(connection.syncEnabled)
 						.onChange(async (value) => {
@@ -168,6 +173,8 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 							connection.syncEnabled = value;
 							await saveSettings(this.plugin);
 						})
+						return;
+					}	
 				);
 
 			/* Item Body */
@@ -183,23 +190,29 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 			setIcon(iconSpan, 'folder')
 			
 			// 이름 텍스트 추가
-			vaultSetting.infoEl.createSpan({ text: 'Vault Path' });
+			vaultSetting.infoEl.createSpan({ text: 'Internal Path(Obsidian)' });
 			
 			vaultSetting
-				.addText(text => text
-					.setValue(connection.internalPath)
-					.onChange(async (value) => {
-						connection.internalPath = value;
-						disableSync(connection, itemHeaderRight);
-						await saveSettings(this.plugin);
-					}))
+				.addText(text => {
+					text
+						.setValue(connection.internalPath)
+						.onChange(async (value) => {
+							connection.internalPath = value;
+							disableSync(connection, syncToggleComponent);
+							await saveSettings(this.plugin);
+						})
+					new FolderSuggest({
+						inputEl: text.inputEl,
+						plugin: this.plugin
+					});
+				})
 				.addButton(btn => btn
 					.setButtonText('📂')
 					.onClick(async () => {
 						const selected = await openVaultFolderSelectionDialog(this.app);
 						if (selected) {
 							connection.internalPath = selected;
-							disableSync(connection, itemHeaderRight);
+							disableSync(connection, syncToggleComponent);
 							await saveSettings(this.plugin);
 							this.display();
 						}
@@ -219,7 +232,7 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 					.setValue(connection.externalPath)
 					.onChange(async value => {
 						connection.externalPath = value;
-						disableSync(connection, itemHeaderRight);
+						disableSync(connection, syncToggleComponent);
 						await saveSettings(this.plugin); // ← await 추가
 					}))
 				.addButton(button => button
@@ -228,7 +241,7 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 						const path = await openFolderSelectionDialog();
 						if (path) {
 							connection.externalPath = path;
-							disableSync(connection, itemHeaderRight);
+							disableSync(connection, syncToggleComponent);
 							await saveSettings(this.plugin);
 							this.display();
 						}
@@ -248,7 +261,7 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 					.setValue(connection.syncType) // 기본값 설정
 					.onChange(async value => {
 						connection.syncType = value as SyncType;
-						disableSync(connection, itemHeaderRight);
+						disableSync(connection, syncToggleComponent);
 						await saveSettings(this.plugin);
 			
 						// 타이틀 옆 syncType 텍스트만 직접 업데이트
@@ -258,20 +271,20 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 						}
 					}));
 
-			new Setting(advancedContent)
-				.setName('Bidirectional Type')
-				.setDesc('Select the bidirectional type')
-				.addDropdown(dropdown => dropdown
-					.addOption(BidirectionalType.merge, 'Merge')
-					.addOption(BidirectionalType.externalPriority, 'External Priority')
-					.addOption(BidirectionalType.internalPriority, 'Internal Priority')
-					.setValue(connection.bidirectionalType)
-					.onChange(async (value) => {
-						disableSync(connection, itemHeaderRight);
-						connection.bidirectionalType = value as BidirectionalType;
-						await saveSettings(this.plugin);
-					})
-				);
+			// new Setting(advancedContent)
+			// 	.setName('Bidirectional Type')
+			// 	.setDesc('Select the bidirectional type')
+			// 	.addDropdown(dropdown => dropdown
+			// 		.addOption(BidirectionalType.merge, 'Merge')
+			// 		.addOption(BidirectionalType.externalPriority, 'External Priority')
+			// 		.addOption(BidirectionalType.internalPriority, 'Internal Priority')
+			// 		.setValue(connection.bidirectionalType)
+			// 		.onChange(async (value) => {
+			// 			disableSync(connection, itemHeaderRight);
+			// 			connection.bidirectionalType = value as BidirectionalType;
+			// 			await saveSettings(this.plugin);
+			// 		})
+			// 	);
 			
 			new Setting(advancedContent)
 				.setName('Deleted File Action')
@@ -281,7 +294,7 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 					.addOption(DeletedFileAction.delete, 'Delete')
 					.setValue(connection.deletedFileAction)
 					.onChange(async (value) => {
-						disableSync(connection, itemHeaderRight);
+						disableSync(connection, syncToggleComponent);
 						connection.deletedFileAction = value as DeletedFileAction;
 						await saveSettings(this.plugin);
 					})
@@ -293,7 +306,7 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 				.addToggle(toggle => toggle
 					.setValue(connection.ignoreHiddenFiles)
 					.onChange(async (value) => {
-						disableSync(connection, itemHeaderRight);
+						disableSync(connection, syncToggleComponent);
 						connection.ignoreHiddenFiles = value;
 						await saveSettings(this.plugin);
 					}));
@@ -304,7 +317,7 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 				.addText(text => text
 					.setValue(connection.excludeFolders.join(','))
 					.onChange(async (value) => {
-						disableSync(connection, itemHeaderRight);
+						disableSync(connection, syncToggleComponent);
 						connection.excludeFolders = value.split(',')
 							.map(folder => folder.trim())
 							.filter(folder => folder !== '');
@@ -317,7 +330,7 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 				.addText(text => text
 					.setValue(connection.includeFolders.join(','))
 					.onChange(async (value) => {
-						disableSync(connection, itemHeaderRight);
+						disableSync(connection, syncToggleComponent);
 						connection.includeFolders = value.split(',')
 							.map(folder => folder.trim())
 							.filter(folder => folder !== '');
@@ -330,7 +343,7 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 				.addText(text => text
 					.setValue(connection.extensions.join(','))
 					.onChange(async (value) => {
-						disableSync(connection, itemHeaderRight);
+						disableSync(connection, syncToggleComponent);
 						connection.extensions = value
 							.split(',')
 							.map(ext => ext.trim().replace(/^\./, ''))
@@ -341,14 +354,14 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 
 			const actionsContainer = itemBody.createDiv({ cls: 'sync-actions-container' });
 
-			new Setting(actionsContainer)
-				.addButton(button => button
-					.setButtonText('🔄 Sync Now')
-					.setCta()
-					.setClass('sync-now-button')
-					.onClick(() => {
-						console.log(`Syncing ${connection.name} now...`);
-					}));
+			// new Setting(actionsContainer)
+			// 	.addButton(button => button
+			// 		.setButtonText('🔄 Sync Now')
+			// 		.setCta()
+			// 		.setClass('sync-now-button')
+			// 		.onClick(() => {
+			// 			console.log(`Syncing ${connection.name} now...`);
+			// 		}));
 
 			new Setting(actionsContainer)
 				.addButton(button => button
@@ -357,7 +370,9 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 					.setClass('remove-connection-button')
 					.onClick(async () => {
 						new RemoveConnectionModal(this.app, connection.name, async () => {
+							disableSync(connection, syncToggleComponent);
 							this.plugin.settings.connections = this.plugin.settings.connections.filter(c => c.id !== connection.id);
+							this.plugin.snapShotService.deleteSnapshotFile(connection);
 							await saveSettings(this.plugin);
 							this.display();
 						}).open();
@@ -365,28 +380,28 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 		});
 
 		/* Maintenance */
-        const maintenanceSection = containerEl.createDiv({ cls: 'setting-section' })
+        // const maintenanceSection = containerEl.createDiv({ cls: 'setting-section' })
 
-		maintenanceSection.createEl('h2', { text: 'Maintenance' });
+		// maintenanceSection.createEl('h2', { text: 'Maintenance' });
 
-		new Setting(maintenanceSection)
-			.setName('Sync All Conntection')
-			.setDesc('Manually initiate all sync operations')
-			.addButton(button => button
-				.setButtonText('🔄')
-				.setCta()
-				.onClick(async () => {
-					console.log('Clicked Sync All Conntection');
-				}));
+		// new Setting(maintenanceSection)
+		// 	.setName('Sync All Conntection')
+		// 	.setDesc('Manually initiate all sync operations')
+		// 	.addButton(button => button
+		// 		.setButtonText('🔄')
+		// 		.setCta()
+		// 		.onClick(async () => {
+		// 			console.log('Clicked Sync All Conntection');
+		// 		}));
 		
-		new Setting(maintenanceSection)
-			.setName('Debug Mode')
-			.setDesc('Outputs console logs and toast messages on sync events')
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.debugMode)
-				.onChange(async (value) => {
-					this.plugin.settings.debugMode = value;
-					await saveSettings(this.plugin);
-				}));
+		// new Setting(maintenanceSection)
+		// 	.setName('Debug Mode')
+		// 	.setDesc('Outputs console logs and toast messages on sync events')
+		// 	.addToggle(toggle => toggle
+		// 		.setValue(this.plugin.settings.debugMode)
+		// 		.onChange(async (value) => {
+		// 			this.plugin.settings.debugMode = value;
+		// 			await saveSettings(this.plugin);
+		// 		}));
 	}
 }

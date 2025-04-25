@@ -1,8 +1,6 @@
 import MarkdownHijacker from "main";
 import { App, TAbstractFile, TFile, TFolder, EventRef } from "obsidian";
-import { DeletedFileAction, FolderConnectionSettings, SyncType } from "src/settings/types";
-import { SyncInternalManager } from "src/sync/SyncInternalManager";
-import { SnapShotService } from "src/sync/SnapShotService";
+import { FolderConnectionSettings } from "src/settings/types";
 
 export class InternalWatcher {
 
@@ -11,19 +9,15 @@ export class InternalWatcher {
     private watchFolders: string[] = [];
     private connections: FolderConnectionSettings[] = [];
     private eventRefs: EventRef[] = [];
-    private snapShotService: SnapShotService;
     constructor(app: App, plugin: MarkdownHijacker) {
         this.app = app;
         this.plugin = plugin;
-        this.snapShotService = new SnapShotService(app, plugin);
     }
 
     public setupWatcher() {
         this.clearEvents();
 
         if (!this.plugin.settings.enableGlobalSync) return;
-
-        const syncInternalManager = new SyncInternalManager(this.app, this.plugin);
 
         this.connections = this.plugin.settings.connections;
         this.watchFolders = [];
@@ -51,11 +45,11 @@ export class InternalWatcher {
                 if (!validExts.includes(ext)) {
                     return;
                 }
-                syncInternalManager.handleAddFile(path, matchedConnection);
+                this.plugin.syncInternalManager.handleAddFile(path, matchedConnection);
             }
 
             if (file instanceof TFolder) {
-                syncInternalManager.handleAddFolder(path, matchedConnection);
+                this.plugin.syncInternalManager.handleAddFolder(path, matchedConnection);
             }
         });
 
@@ -66,11 +60,11 @@ export class InternalWatcher {
             if (!matchedConnection) return;
             
             if (file instanceof TFile) {
-                syncInternalManager.handleDeleteFile(path, matchedConnection);
+                this.plugin.syncInternalManager.handleDeleteFile(path, matchedConnection);
             }
 
             if (file instanceof TFolder) {
-                syncInternalManager.handleDeleteFolder(path, matchedConnection);
+                this.plugin.syncInternalManager.handleDeleteFolder(path, matchedConnection);
             }
         });
 
@@ -88,7 +82,7 @@ export class InternalWatcher {
                     console.log(`[InternalWatcher] 확장자 미일치로 무시됨: ${path}`);
                     return;
                 }
-                syncInternalManager.handleChangeFile(path, matchedConnection);
+                this.plugin.syncInternalManager.handleChangeFile(path, matchedConnection);
             }
         });
 
@@ -106,11 +100,11 @@ export class InternalWatcher {
                     console.log(`[InternalWatcher] 확장자 미일치로 무시됨: ${path}`);
                     return;
                 }
-                await syncInternalManager.handleRenameFile(path, oldPath, matchedConnection);
+                await this.plugin.syncInternalManager.handleRenameFile(path, oldPath, matchedConnection);
             }
 
             if (file instanceof TFolder) {
-                await syncInternalManager.handleRenameFolder(path, oldPath, matchedConnection);
+                await this.plugin.syncInternalManager.handleRenameFolder(path, oldPath, matchedConnection);
             }
         });
 
