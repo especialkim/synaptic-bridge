@@ -162,14 +162,6 @@ export class SyncManager {
                 toDeleteBoth.push(s.relativePath);
             }
         }
-
-        console.log(`[SyncManager] toAddToExternal: ${toAddToExternal}`);
-        console.log(`[SyncManager] toAddToInternal: ${toAddToInternal}`);
-        console.log(`[SyncManager] toUpdateExternal: ${toUpdateExternal}`);
-        console.log(`[SyncManager] toUpdateInternal: ${toUpdateInternal}`);
-        console.log(`[SyncManager] toDeleteExternal: ${toDeleteExternal}`);
-        console.log(`[SyncManager] toDeleteInternal: ${toDeleteInternal}`);
-        console.log(`[SyncManager] toDeleteBoth: ${toDeleteBoth}`);
     
         // 실제 동기화 처리 (예시)
         if (toAddToExternal.length > 0) {

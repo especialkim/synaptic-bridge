@@ -313,44 +313,63 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 
 			new Setting(advancedContent)
 				.setName('Excluded Paths')
-				.setDesc('Comma-separated list of paths to exclude (ignored if empty)')
-				.addText(text => text
-					.setValue(connection.excludeFolders.join(','))
-					.onChange(async (value) => {
-						disableSync(connection, syncToggleComponent);
-						connection.excludeFolders = value.split(',')
-							.map(folder => folder.trim())
-							.filter(folder => folder !== '');
-						await saveSettings(this.plugin);
-					}));
+				.setDesc('Enter one path per line (leave empty to ignore)')
+				.addTextArea(textarea => {
+					textarea
+						.setValue(connection.excludeFolders.join('\n'))
+						.setPlaceholder('e.g. node_modules\nbuild\ndist')
+						.onChange(async (value) => {
+							disableSync(connection, syncToggleComponent);
+							connection.excludeFolders = value.split('\n')
+								.map(folder => folder.trim())
+								.filter(folder => folder !== '');
+							await saveSettings(this.plugin);
+						});
+					// 스타일 적용
+					textarea.inputEl.style.minHeight = "100px";
+					textarea.inputEl.style.width = "180px";
+					textarea.inputEl.style.resize = "none"; // 크기 조절 비활성화
+				});
 
 			new Setting(advancedContent)
 				.setName('Required Paths')
-				.setDesc('Comma-separated list of paths that must be included (overrides exclusions)')
-				.addText(text => text
-					.setValue(connection.includeFolders.join(','))
-					.onChange(async (value) => {
-						disableSync(connection, syncToggleComponent);
-						connection.includeFolders = value.split(',')
-							.map(folder => folder.trim())
-							.filter(folder => folder !== '');
-						await saveSettings(this.plugin);
-					}));
+				.setDesc('Enter one path per line (overrides exclusions)')
+				.addTextArea(textarea => {
+					textarea
+						.setValue(connection.includeFolders.join('\n'))
+						.setPlaceholder('note\nmemo')
+						.onChange(async (value) => {
+							disableSync(connection, syncToggleComponent);
+							connection.includeFolders = value.split('\n')
+								.map(folder => folder.trim())
+								.filter(folder => folder !== '');
+							await saveSettings(this.plugin);
+						});
+					textarea.inputEl.style.minHeight = "100px";
+					textarea.inputEl.style.width = "180px";
+					textarea.inputEl.style.resize = "none";
+				});
 
 			new Setting(advancedContent)
 				.setName('File Extensions')
-				.setDesc('Comma-separated list of file extensions to sync (e.g., md, txt)')
-				.addText(text => text
-					.setValue(connection.extensions.join(','))
-					.onChange(async (value) => {
-						disableSync(connection, syncToggleComponent);
-						connection.extensions = value
-							.split(',')
-							.map(ext => ext.trim().replace(/^\./, ''))
-							.map(ext => ext.toLowerCase())
-							.map(ext => ext.replace('.', ''));
-						await saveSettings(this.plugin);
-					}));
+				.setDesc('Enter one extension per line (e.g., md, txt)')
+				.addTextArea(textarea => {
+					textarea
+						.setValue(connection.extensions.join('\n'))
+						.setPlaceholder('e.g. md\ntxt\npng\njpg\npdf')
+						.onChange(async (value) => {
+							disableSync(connection, syncToggleComponent);
+							connection.extensions = value
+								.split('\n')
+								.map(ext => ext.trim().replace(/^\./, ''))
+								.map(ext => ext.toLowerCase())
+								.filter(ext => ext !== '');
+							await saveSettings(this.plugin);
+						});
+					textarea.inputEl.style.minHeight = "100px";
+					textarea.inputEl.style.width = "180px";
+					textarea.inputEl.style.resize = "none";
+				});
 
 			const actionsContainer = itemBody.createDiv({ cls: 'sync-actions-container' });
 
