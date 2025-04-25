@@ -13,7 +13,6 @@ export class SyncInternalChangeEvent {
     }
     
     public async handleUserChangeMd(path: string, connection: FolderConnectionSettings){
-        console.log(`[SyncInternalChangeEvent] handleUserChangeMd: ${path}`);
 
         const isFrontmatterValid = this.plugin.syncService.isFrontmatterValid(path, connection);
         if(!isFrontmatterValid){

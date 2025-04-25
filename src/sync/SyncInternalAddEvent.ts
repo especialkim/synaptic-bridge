@@ -17,12 +17,10 @@ export class SyncInternalAddEvent {
     }
 
     public async handleUserAddFile(path: string, connection: FolderConnectionSettings){
-        console.log(`[SyncInternalAddEvent] handleUserAddFile: ${path}`);
         await this.plugin.syncService.syncFileToExternal(path, connection);
     }
 
     public async handleUserAddMdBlank(path: string, connection: FolderConnectionSettings){
-        console.log(`[SyncInternalAddEvent] handleUserAddMdBlank: ${path}`);
 
         try {
             const frontmatter = this.plugin.syncService.generateFrontmatter(path, connection);
@@ -34,7 +32,6 @@ export class SyncInternalAddEvent {
     }
 
     public async handleUserAddMdContent(path: string, connection: FolderConnectionSettings){
-        console.log(`[SyncInternalAddEvent] handleUserAddMdContent: ${path}`);
 
         try {
             const frontmatter = this.plugin.syncService.generateFrontmatter(path, connection);
@@ -58,7 +55,6 @@ export class SyncInternalAddEvent {
 
     /* Add Folder */
     public async handleAddFolder(path: string, connection: FolderConnectionSettings) {
-        console.log(`[SyncInternalAddEvent] handleAddFolder: ${path}`);
 
         // 내부 경로를 외부 경로로 변환
         const relativePath = this.plugin.syncService.getRelativePath(path, connection);
@@ -67,14 +63,11 @@ export class SyncInternalAddEvent {
         try {
             // 외부 폴더 생성 (상위 폴더까지 재귀적으로 생성)
             await fs.mkdir(externalPath, { recursive: true });
-            console.log(`Created external folder: ${externalPath}`);
         } catch (error: any) {
             // 이미 폴더가 존재하는 경우 무시
             if (error.code === 'EEXIST') {
-                console.log(`Folder already exists: ${externalPath}`);
                 return;
             }
-            console.error(`Error creating external folder: ${error}`);
         }
     }
 }

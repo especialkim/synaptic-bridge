@@ -20,7 +20,6 @@ export class SyncExternalDeleteEvent {
 
     /* Delete File */
     public async handleUserDeleteMd(path: string){
-        console.log(`[SyncExternalDeleteEvent] handleUserDeleteMd: ${path}`);
 
         if(this.connection.deletedFileAction === DeletedFileAction.property){
             await this.plugin.syncService.deleteFileActionPropertyOnExternal(path, this.connection);
@@ -30,7 +29,6 @@ export class SyncExternalDeleteEvent {
     }
 
     public async handleUserDeleteNotMd(path: string){
-        console.log(`[SyncExternalDeleteEvent] handleUserDeleteNotMd: ${path}`);
 
         if(this.connection.deletedFileAction === DeletedFileAction.property){
             await this.plugin.syncService.deleteFileActionPropertyOnExternal(path, this.connection, false);
@@ -55,7 +53,6 @@ export class SyncExternalDeleteEvent {
 
     /* Delete Folder */
     public async handleUserDeleteFolder(path: string){
-        console.log(`[SyncExternalDeleteEvent] handleUserDeleteFolder: ${path}`);
 
         if(this.connection.deletedFileAction === DeletedFileAction.property){
             await this.plugin.syncService.deleteFolderActionPropertyOnExternal(path, this.connection);

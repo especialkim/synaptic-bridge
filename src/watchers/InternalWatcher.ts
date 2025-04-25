@@ -29,8 +29,6 @@ export class InternalWatcher {
             }
         });
 
-        console.log(`[InternalWatcher] 감시할 폴더: ${this.watchFolders}`);
-
         const createRef = this.plugin.app.vault.on('create', async (file: TAbstractFile) => {
             
             const path = file.path;
@@ -79,7 +77,6 @@ export class InternalWatcher {
                 const ext = file.extension.toLowerCase();
                 const validExts = matchedConnection.extensions.map(e => e.replace(/^\./, '').toLowerCase());
                 if (!validExts.includes(ext)) {
-                    console.log(`[InternalWatcher] 확장자 미일치로 무시됨: ${path}`);
                     return;
                 }
                 this.plugin.syncInternalManager.handleChangeFile(path, matchedConnection);
@@ -97,7 +94,6 @@ export class InternalWatcher {
                 const ext = file.extension.toLowerCase();
                 const validExts = matchedConnection.extensions.map(e => e.replace(/^\./, '').toLowerCase());
                 if (!validExts.includes(ext)) {
-                    console.log(`[InternalWatcher] 확장자 미일치로 무시됨: ${path}`);
                     return;
                 }
                 await this.plugin.syncInternalManager.handleRenameFile(path, oldPath, matchedConnection);
@@ -111,7 +107,7 @@ export class InternalWatcher {
         this.eventRefs.push(createRef, deleteRef, modifyRef, renameRef);
     }
 
-    private clearEvents() {
+    public clearEvents() {
         this.eventRefs.forEach(ref => this.plugin.app.vault.offref(ref));
         this.eventRefs = [];
     }

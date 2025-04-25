@@ -190,7 +190,6 @@ export class SyncManager {
         }
         if (toDeleteBoth.length > 0) {
             // 양쪽 모두 없는 경우: snapshot에서만 정리
-            console.log(`[SyncManager] 양쪽 모두 없는 경우: ${toDeleteBoth}`);
             await this.plugin.snapShotService.removeSnapShots(this.connection, toDeleteBoth);
         }
     }

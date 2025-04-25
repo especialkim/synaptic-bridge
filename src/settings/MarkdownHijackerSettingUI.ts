@@ -66,8 +66,6 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 
 	display():void {
 
-		console.log("settings : ", this.plugin.settings);
-		
         const { containerEl } = this;
         containerEl.empty();
         containerEl.addClass('markdown-hijacker-settings');
@@ -110,7 +108,6 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 				.setButtonText('+')
 				.setCta()
 				.onClick(async () => {
-					console.log('Clicked New Connection');
 					const newConnection = { ...DEFAULT_CONNECTIONS, id: crypto.randomUUID() };
 					this.plugin.settings.connections.push(newConnection);
 					await saveSettings(this.plugin);
@@ -312,8 +309,8 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 					}));
 
 			new Setting(advancedContent)
-				.setName('Excluded Paths')
-				.setDesc('Enter one path per line (leave empty to ignore)')
+				.setName('Exclude Subfolder Names')
+				.setDesc('Subfolders to exclude from sync, one per line.')
 				.addTextArea(textarea => {
 					textarea
 						.setValue(connection.excludeFolders.join('\n'))
@@ -332,8 +329,8 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 				});
 
 			new Setting(advancedContent)
-				.setName('Required Paths')
-				.setDesc('Enter one path per line (overrides exclusions)')
+				.setName('Include Subfolder Names')
+				.setDesc('Only sync these subfolders (overrides exclude).')
 				.addTextArea(textarea => {
 					textarea
 						.setValue(connection.includeFolders.join('\n'))

@@ -18,13 +18,11 @@ export class ExternalWatcher{
     }
 
     public setupWatcher(){
-        console.log(`[ExternalWatcher] setupWatcher 호출`);
 
         this.stopWatching();
         if(!this.plugin.settings.enableGlobalSync) return;
         
         const connections = this.plugin.settings.connections;
-        console.log(`[ExternalWatcher] setupWatcher 호출 후 커넥션 갯수: ${connections.length}`);
 
         connections.forEach(connection => {
             const { externalPath, syncEnabled } = connection;
@@ -45,7 +43,6 @@ export class ExternalWatcher{
             });
 
             watcher.on('add', (path: string) => {
-                console.log(`[ExternalWatcher] 외부 파일 시스템 추가: ${path}`);
                 if(!this.isValidPath(path)) return;
                 if(connection.syncType === SyncType.vaultToExternal) return;
                 syncExternalManager.handleAddFile(path);
@@ -70,7 +67,6 @@ export class ExternalWatcher{
                 syncExternalManager.handleDeleteFolder(path);
             });
             watcher.on('error', (error: Error) => {
-                console.log(`[ExternalWatcher] 외부 파일 시스템 오류 발생: ${error.message}`);
             });
 
             watcher.on('ready', () => {

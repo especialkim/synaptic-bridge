@@ -38,39 +38,47 @@ Markdown Hijacker is an Obsidian plugin that synchronizes markdown and any file 
 1. Go to Settings(⚙️) > Community Plugins > Markdown Hijacker settings
 2. Toggle "Enable Plugin" to activate all features
 
-### 2. Folder Mapping Setup
+### 2. Initial Settings
 
-When you change any option in Folder Mapping Setup or Advanced Settings, the corresponding sync will be automatically disabled for safety. After updating all settings, make sure to re-enable the mapping to resume synchronization.
+![Initial Settings Screen](image/01_Initial_Settings.png)
+*Initial settings screen for Markdown Hijacker*
 
-1. Click "Add Folder Mapping" to create a new mapping.
-2. For each mapping, configure:
-    2.1 **Vault Path**: Relative path within your Vault (can be selected with the folder finder button).
-    2.2 **External Folder Path**: Absolute path to the external folder to synchronize (can be selected with the folder selection button).
-    2.3 **Enable Mapping**: Toggle to activate this specific mapping after all settings are updated.
+1. **Global Synchronization**: Turn this ON to enable all synchronization features of the plugin, or OFF to disable them globally.
+2. **Sync Connections**: Click the "+" button to add a new sync connection pair.
 
-### 3. Advanced Settings
+### 3. Folder Mapping Setup
 
-When you change any option in Advanced Settings, the corresponding sync will be automatically disabled. Please update all desired settings, then re-enable the mapping to apply changes and resume synchronization.
+![Add New Sync Connection](image/02_Add_Sync_Connect.png)
+*Adding a new sync connection pair*
+
+1. Click the "+" button to create a new connection.
+2. Click the title to rename the connection.
+3. Click the sync status toggle to enable or disable synchronization for this connection.
+4. **Internal Path**: Set the relative path within your Vault (use the folder finder button if needed).
+5. **External Path**: Set the absolute path to the external folder to synchronize (use the folder selection button if needed).
+6. **Advanced Settings**: Click here to configure detailed options for this connection.
+7. **Delete Button** : ~~~~
+
+> **Note:** When you change any option in Folder Mapping Setup or Advanced Settings, the corresponding sync will be automatically disabled for safety. After updating all settings, make sure to re-enable the mapping to resume synchronization.
+
+### 4. Advanced Settings
+
+![Advanced Settings Screen](image/04_Advanced_Settings.png)
+*Advanced settings for a sync connection*
 
 1. **Synchronization Direction**:
     - External→Vault: Import external changes to Vault only
     - Vault→External: Export Vault changes to external folders only
     - Bidirectional: Reflect changes in both directions
-
-2. **Bidirectional Sync Settings** (when bidirectional sync is selected):
-    - Merge: Merge changes from both sides
-    - External Priority: External files take precedence in conflicts
-    - Internal Priority: Vault files take precedence in conflicts
-
-3. **Deleted File Handling**:
+2. **Deleted File Handling**:
     - Property Change: Mark as deleted (add "❌" prefix to filename and update metadata)
-    - Complete Deletion: Fully delete from connected folder
+    - Complete Deletion: Fully delete from the connected folder
+3. **Ignore Hidden Files and Folders**: Toggle whether to include or exclude hidden files and folders (those starting with a dot).
+4. **Exclude Subfolder Names**: Enter the names of subfolders to exclude from sync, one per line.
+5. **Include Subfolder Names**: Enter the names of subfolders to include for sync. If set, only these subfolders will be synced and Exclude Subfolder Names will be ignored.
+6. **File Extensions**: Enter file extensions to include for sync, one per line.
 
-4. **Filtering Options**:
-    - Ignore Hidden Files: Exclude hidden files (files starting with .) from sync
-    - Exclude/Include Folders: Exclude or include specific folders from synchronization
-    - Specify Extensions: Synchronize only specific file extensions (.md, .txt, etc.)
-    - **Note:** If include options are set, exclude options will be ignored.
+> **Note:** When you change any option in Advanced Settings, the corresponding sync will be automatically disabled. Please update all desired settings, then re-enable the mapping to apply changes and resume synchronization.
 
 ## Usage Tips
 

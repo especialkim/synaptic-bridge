@@ -5,49 +5,93 @@ export class ExplorerSyncDecorator {
     private app: App;
     private plugin: MarkdownHijacker;
     private decoratedPaths: Set<string> = new Set();
+    private isSetup: boolean = false;
+    private explorerObserver: MutationObserver | null = null;
 
     constructor(app: App, plugin: MarkdownHijacker) {
         this.app = app;
         this.plugin = plugin;
     }
 
+    /**
+     * Set up explorer decoration, event listener, and MutationObserver. Safe to call multiple times.
+     */
     public setup() {
-        this.decorateAllSyncFolders();
-        // 탐색기 갱신(폴더 추가/이동 등)에도 다시 적용
-        this.app.workspace.on('layout-change', this.decorateAllSyncFolders);
+        if (this.isSetup) return;
+        this.isSetup = true;
+        this.plugin.registerEvent(
+            this.app.workspace.on('layout-change', this.decorateAllSyncFolders)
+        );
+        this.observeExplorer();
     }
 
+    /**
+     * Set up a MutationObserver to watch for file explorer DOM changes.
+     */
+    private observeExplorer() {
+        if (this.explorerObserver) return;
+        // Try to find the file explorer panel
+        // This selector may need adjustment depending on Obsidian version/skin
+        const explorer = document.querySelector('.workspace-leaf-content[data-type="file-explorer"]') || document.body;
+        this.explorerObserver = new MutationObserver(() => {
+            const count = document.querySelectorAll('.nav-folder-title').length;
+            if (count > 0) {
+                this.decorateAllSyncFolders();
+            }
+        });
+        this.explorerObserver.observe(explorer, { childList: true, subtree: true });
+    }
+
+    /**
+     * Remove all decorations and disconnect MutationObserver.
+     */
     public cleanup() {
-        // 모든 뱃지 제거
         document.querySelectorAll('.sync-folder-badge').forEach(el => el.remove());
         this.decoratedPaths.clear();
-        // 이벤트 리스너 해제 (필요시)
-        // Obsidian의 this.registerEvent로 등록하면 자동 해제됨
+        this.isSetup = false;
+        if (this.explorerObserver) {
+            this.explorerObserver.disconnect();
+            this.explorerObserver = null;
+        }
     }
 
-    private decorateAllSyncFolders = () => {
-        // 동기화 폴더 목록 (internalPath 기준, 절대경로 or 상대경로)
+    public decorateAllSyncFolders = () => {
+        // 1. MutationObserver 일시 해제
+        if (this.explorerObserver) {
+            this.explorerObserver.disconnect();
+        }
+    
+        // 2. 기존 badge 모두 제거
+        document.querySelectorAll('.sync-folder-badge').forEach(el => el.remove());
+        this.decoratedPaths.clear();
+    
+        // 3. enableGlobalSync가 꺼져 있으면 바로 종료
+        if (!this.plugin.settings.enableGlobalSync) {
+            // 4. MutationObserver 다시 등록
+            this.observeExplorer();
+            return;
+        }
+    
+        // 5. 동기화 폴더에만 badge 추가
         const syncFolders = this.plugin.settings.connections
             .filter(conn => conn.syncEnabled)
             .map(conn => conn.internalPath);
-
-        // 모든 폴더 타이틀 DOM 탐색
-        document.querySelectorAll('.nav-folder-title').forEach(folderTitle => {
+    
+        const folderTitles = document.querySelectorAll('.nav-folder-title');
+    
+        folderTitles.forEach(folderTitle => {
             const dataPath = (folderTitle as HTMLElement).getAttribute('data-path');
             if (!dataPath) return;
-
-            // 동기화 폴더에 해당하는지 체크
+    
             if (syncFolders.some(syncPath => dataPath.endsWith(syncPath))) {
-                // 이미 뱃지가 있으면 중복 추가 방지
-                if (folderTitle.querySelector('.sync-folder-badge')) return;
-
-                // 폴더명 오른쪽에 작은 원 추가
+                if (folderTitle.querySelector('.sync-folder-badge')) {
+                    return;
+                }
                 const contentEl = folderTitle.querySelector('.nav-folder-title-content');
                 if (contentEl) {
                     const badge = document.createElement('span');
                     badge.className = 'sync-folder-badge';
                     badge.title = 'This folder is being synced';
-                    // 작은 초록색 원 SVG
                     badge.innerHTML = `<svg width="10" height="10" style="vertical-align: middle;"><circle cx="5" cy="5" r="4" fill="var(--color-accent)"/></svg>`;
                     badge.style.marginLeft = '6px';
                     contentEl.appendChild(badge);
@@ -55,5 +99,8 @@ export class ExplorerSyncDecorator {
                 }
             }
         });
+    
+        // 6. MutationObserver 다시 등록
+        this.observeExplorer();
     }
 }

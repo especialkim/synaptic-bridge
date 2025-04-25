@@ -17,12 +17,10 @@ export class SyncExternalAddEvent {
     
     /* Add File */
     public async handleUserAddFile(path: string) {
-        console.log(`[SyncExternalAddEvent] handleUserAddFile: ${path}`);
         await this.plugin.syncService.syncFileToInternal(path, this.connection);
     }
 
     public async handleUserAddMdBlank(path: string) {
-        console.log(`[SyncExternalAddEvent] handleUserAddMdBlank: ${path}`);
         try {
             const frontmatter = this.plugin.syncService.generateFrontmatter(path, this.connection);
             await this.plugin.syncService.updateExternalFileFrontmatter(path, frontmatter, this.connection);
@@ -33,7 +31,6 @@ export class SyncExternalAddEvent {
     }
 
     public async handleUserAddMdContent(path: string) {
-        console.log(`[SyncExternalAddEvent] handleUserAddMdContent: ${path}`);
         /* 1. 외부 파일에 frontmatter 추가 */
         try {
             const frontmatter = this.plugin.syncService.generateFrontmatter(path, this.connection);
@@ -58,7 +55,6 @@ export class SyncExternalAddEvent {
 
     /* Add Folder */
     public async handleAddFolder(path: string) {
-        console.log(`[SyncExternalAddEvent] handleAddFolder: ${path}`);
 
         // 상대 경로 계산
         const relativePath = this.plugin.syncService.getRelativePath(path, this.connection);
@@ -67,11 +63,9 @@ export class SyncExternalAddEvent {
         try {
             // 내부 폴더 생성
             await this.app.vault.createFolder(internalPath);
-            console.log(`Created internal folder: ${internalPath}`);
         } catch (error) {
             // 이미 폴더가 존재하는 경우 무시
             if (error.message.includes('Folder already exists')) {
-                console.log(`Folder already exists: ${internalPath}`);
                 return;
             }
             console.error(`Error creating folder: ${error}`);

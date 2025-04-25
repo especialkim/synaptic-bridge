@@ -52,7 +52,6 @@ export default class MarkdownHijacker extends Plugin {
 	explorerSyncDecorator: ExplorerSyncDecorator;
 
 	async onload() {
-		console.log('MarkdownHijacker plugin loaded');
 		
 		/* Load Settings */
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
@@ -83,19 +82,21 @@ export default class MarkdownHijacker extends Plugin {
 		/* 설정 변경 이벤트 리스너 등록 */
 		this.registerEvent(
 			this.app.workspace.on('markdown-hijacker:settings-changed', () => {
-				console.log('markdown-hijacker:settings-changed 설정 변경 이벤트 발생');
 				if (this.externalWatcher) {
 					this.externalWatcher.setupWatcher();
 				}
 				if (this.internalWatcher) {
 					this.internalWatcher.setupWatcher();
 				}
+
+				if (this.explorerSyncDecorator) {
+					this.explorerSyncDecorator.decorateAllSyncFolders();
+				}
 			})
 		);
 	}
 
 	onunload() {
-		console.log('MarkdownHijacker plugin unloaded');
 		
 		// Make sure to stop the watcher when the plugin is unloaded
 		if (this.externalWatcher) {

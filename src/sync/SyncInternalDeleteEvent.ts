@@ -14,7 +14,6 @@ export class SyncInternalDeleteEvent {
     
     /* User Delete File */
     public async handleUserDeleteMd(path: string, connection: FolderConnectionSettings){
-        console.log(`[SyncInternalDeleteEvent] handleUserDeleteMd: ${path}`);
 
         if(connection.deletedFileAction === DeletedFileAction.property){
             await this.plugin.syncService.deleteFileActionPropertyOnInternal(path, connection);
@@ -24,7 +23,6 @@ export class SyncInternalDeleteEvent {
     }
 
     public async handleUserDeleteNotMd(path: string, connection: FolderConnectionSettings){
-        console.log(`[SyncInternalDeleteEvent] handleUserDeleteNotMd: ${path}`);
 
         if(connection.deletedFileAction === DeletedFileAction.property){
             await this.plugin.syncService.deleteFileActionPropertyOnInternal(path, connection, false);
@@ -50,7 +48,6 @@ export class SyncInternalDeleteEvent {
 
     /* User Delete Folder */
     public async handleUserDeleteFolder(path: string, connection: FolderConnectionSettings){
-        console.log(`[SyncInternalDeleteEvent] handleUserDeleteFolder: ${path}`);
         
         if(connection.deletedFileAction === DeletedFileAction.property){
             await this.plugin.syncService.deleteFolderActionPropertyOnInternal(path, connection);
@@ -61,18 +58,15 @@ export class SyncInternalDeleteEvent {
 
     /* System Delete Folder 처리 불필요 */
     public async handleSystemDeleteFolder(path: string, connection: FolderConnectionSettings){
-        console.log(`[SyncInternalDeleteEvent] handleSystemDeleteFolder: ${path}`);
         return;
     }
 
     /* Force Delete */
     public async forceDeleteFile(path: string, connection: FolderConnectionSettings){
-        console.log(`[SyncInternalDeleteEvent] forceDeleteFile: ${path}`);
         await this.plugin.syncService.deleteFileActionDeleteOnInternal(path, connection);
     }
 
     public async forceDeleteFolder(path: string, connection: FolderConnectionSettings){
-        console.log(`[SyncInternalDeleteEvent] forceDeleteFolder: ${path}`);
         await this.plugin.syncService.deleteFolderActionDeleteOnInternal(path, connection);
     }
 }

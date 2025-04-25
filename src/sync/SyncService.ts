@@ -26,20 +26,16 @@ export class SyncService {
         try {
             await this.ensureParentFolderExistsInObsidian(internalFilePath);
             fsSync.copyFileSync(path, internalAbsolutePath);
-            console.log(`[SyncService: syncFileToInternal] Copied file to: ${internalAbsolutePath}`);
 
             const internalFileMtime = fsSync.statSync(internalAbsolutePath).mtime.getTime();
             fsSync.utimesSync(path, new Date(), new Date(internalFileMtime));
 
-            console.log('[SyncService: syncFileToInternal] internalFileMtime: ', internalFileMtime);
-            console.log('[SyncService: syncFileToInternal] externalFileMtime: ', fsSync.statSync(path).mtime.getTime());
         } catch (error) {
             console.error(`[SyncService: syncFileToInternal] Error copying file: ${error}`);
         }
 
         /* SnapShot */
         try {
-            console.log(`[SyncService: syncFileToInternal] updateSnapshot: ${path}`);
             this.plugin.snapShotService.updateSnapshot(connection, path);
         } catch (error) {
             console.error(`[SyncService: syncFileToInternal] Error updating snapshot: ${error}`);
@@ -56,21 +52,17 @@ export class SyncService {
 
             // 내부 파일을 외부 파일로 복사
             fsSync.copyFileSync(internalAbsolutePath, externalFilePath);
-            console.log(`[SyncService: syncFileToExternal] Copied file to: ${externalFilePath}`);
 
             // 내부 파일의 mtime을 외부 파일에 동기화
             const internalFileMtime = fsSync.statSync(internalAbsolutePath).mtime;
             fsSync.utimesSync(externalFilePath, new Date(), internalFileMtime);
 
-            console.log('[SyncService: syncFileToExternal] internalFileMtime: ', internalFileMtime.getTime());
-            console.log('[SyncService: syncFileToExternal] externalFileMtime: ', fsSync.statSync(externalFilePath).mtime.getTime());
         } catch (error) {
             console.error(`[SyncService: syncFileToExternal] Error copying file: ${error}`);
         }
 
         // SnapShot
         try {
-            console.log(`[SyncService: syncFileToExternal] updateSnapshot: ${externalFilePath}`);
             this.plugin.snapShotService.updateSnapshot(connection, externalFilePath);
         } catch (error) {
             console.error(`[SyncService: syncFileToExternal] Error updating snapshot: ${error}`);
@@ -98,11 +90,8 @@ export class SyncService {
 
     public async updateInternalFileFrontmatter(path: string, frontmatter: any, connection: FolderConnectionSettings): Promise<void> {
         try {
-            console.log('[updateInternalFileFrontmatter] 입력 path:', path);
-            console.log('[updateInternalFileFrontmatter] frontmatter:', frontmatter);
             const relativePath = this.getRelativePath(path, connection);
             const internalAbsolutePath = this.getInternalAbsolutePath(relativePath, connection);
-            console.log('[updateInternalFileFrontmatter] internalAbsolutePath:', internalAbsolutePath);
             await this.updateExternalFileFrontmatter(internalAbsolutePath, frontmatter, connection);
         } catch(error) {
             console.error(`Error updating internal file frontmatter: ${error}`);
@@ -111,15 +100,12 @@ export class SyncService {
 
     public async updateExternalFileFrontmatter(path: string, frontmatter: any, connection: FolderConnectionSettings): Promise<void> {
         try {
-            console.log('[updateExternalFileFrontmatter] 입력 path:', path);
-            console.log('[updateExternalFileFrontmatter] frontmatter:', frontmatter);
             const originalContent = fsSync.readFileSync(path, 'utf8');
             const { data, content } = this.readFrontmatterAndContent(path);
             const mergedFrontmatter = { ...data, ...frontmatter };
             const updatedContent = matter.stringify(content, mergedFrontmatter);
             
             fsSync.writeFileSync(path, updatedContent);
-            console.log('[updateExternalFileFrontmatter] 파일 업데이트 완료:', path);
 
             // if (originalContent !== updatedContent) {
             //     fsSync.writeFileSync(path, updatedContent);
@@ -276,7 +262,6 @@ export class SyncService {
     
             try {
                 await fs.rename(externalFolderPath, newExternalFolderPath);
-                console.log(`Renamed external folder: ${externalFolderPath} -> ${newExternalFolderPath}`);
             } catch (error) {
                 console.error(`Error renaming external folder: ${error}`);
             }
@@ -317,7 +302,6 @@ export class SyncService {
             try {
                 // fs.rm (Node 14.14+) 또는 fs.rmdir (구버전) 사용
                 await fs.rm(externalFolderPath, { recursive: true, force: true });
-                console.log(`Deleted external folder: ${externalFolderPath}`);
             } catch (error) {
                 console.error(`Error deleting external folder: ${error}`);
             }
@@ -326,16 +310,12 @@ export class SyncService {
     }
 
     public isFrontmatterValid(path: string, connection: FolderConnectionSettings): boolean {
-        console.log(`[SyncService: isFrontmatterValid] generating frontmatter`);
         const toUpdateFrontmatterData = this.generateFrontmatter(path, connection, false) as Record<string, any>;
-        console.log(`[SyncService: isFrontmatterValid] toUpdateFrontmatterData: ${JSON.stringify(toUpdateFrontmatterData, null, 2)}`);
         if(path.includes(connection.internalPath)){
             path = this.getInternalAbsolutePath(path, connection);
         }
-        console.log(`[SyncService: isFrontmatterValid] path: ${path}`);
         const { data: existFrontmatterRaw } = this.readFrontmatterAndContent(path);
         const existFrontmatter = existFrontmatterRaw as Record<string, any>;
-        console.log(`[SyncService: isFrontmatterValid] existFrontmatter: ${JSON.stringify(existFrontmatter)}`);
         for (const key of Object.keys(toUpdateFrontmatterData)) {
             if (!(key in existFrontmatter)) return false;
             const a = toUpdateFrontmatterData[key];
@@ -369,7 +349,6 @@ export class SyncService {
             // 폴더가 없으면 생성
             try {
                 await this.app.vault.createFolder(folderPath);
-                console.log(`Created folder: ${folderPath}`);
             } catch (error) {
                 // 이미 존재하거나 상위 폴더가 없는 경우
                 if (error.message.includes('Folder already exists')) {
@@ -381,7 +360,6 @@ export class SyncService {
                 if (parentFolderPath) {
                     await this.ensureParentFolderExistsInObsidian(parentFolderPath);
                     await this.app.vault.createFolder(folderPath);
-                    console.log(`Created folder after creating parent: ${folderPath}`);
                 }
             }
         }
@@ -403,7 +381,6 @@ export class SyncService {
             }
             try {
                 await fs.mkdir(folderPath);
-                console.log(`Created external folder: ${folderPath}`);
             } catch (mkdirError: any) {
                 // 이미 존재하는 경우 무시
                 if ((mkdirError as any).code !== "EEXIST") {

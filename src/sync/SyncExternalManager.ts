@@ -37,7 +37,6 @@ export class SyncExternalManager {
     }
 
     public async handleAddFile(path: string){
-        console.log(`[SyncExternalManager] handleAddFile: ${path}`);
 
         /* State 초기화 */
         const createdAt = Date.now();
@@ -58,7 +57,6 @@ export class SyncExternalManager {
 
         /* Check Add Type */
         const addFileType = this.checkAddFileType(path);
-        console.log(`[SyncExternalManager] AddFileType: ${addFileType}`);
         /* Handle by AddFileType : System Event 처리 불필요함 */
         switch(addFileType){
             case AddFileType.USER_ADD_FILE:
@@ -103,7 +101,6 @@ export class SyncExternalManager {
     }
 
     public async handleChangeFile(path: string){
-        console.log(`[SyncExternalManager] handleChangeFile: ${path}`);
         
         const changeFileType = await this.checkChangeFileType(path);
 
@@ -151,10 +148,8 @@ export class SyncExternalManager {
     }
 
     public async handleDeleteFile(path: string){
-        console.log(`[SyncExternalManager] handleDeleteFile: ${path}`);
 
         const deleteFileType = this.checkDeleteFileType(path);
-        console.log(`[SyncExternalManager] deleteFileType: ${deleteFileType}`);
 
         /* 
             ※ SYSTEM_DELETE는 처리할 필요 없음        
@@ -188,7 +183,6 @@ export class SyncExternalManager {
     }
 
     public async handleDeleteFolder(path: string){
-        console.log(`handleDeleteFolder: ${path}`);
         
         const deleteFolderType = this.checkDeleteFolderType(path);
 

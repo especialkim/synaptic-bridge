@@ -44,7 +44,6 @@ export class SnapShotService {
     
             fs.mkdirSync(pluginDataPath, { recursive: true });
             fs.writeFileSync(snapshotPath, JSON.stringify(snapshot, null, 2), "utf-8");
-            console.log(`[SnapShotService] Snapshot 저장 완료: ${snapshotPath}`);
         } catch (err) {
             console.error(`[SnapShotService] Snapshot 저장 실패`, err);
         }
@@ -79,11 +78,7 @@ export class SnapShotService {
     
     public async updateSnapshot(connection: FolderConnectionSettings, path: string){
         const snapShotData = this.generateSnapshotData(connection, path);
-        console.log(`[SnapShotService] snapShotData: ${JSON.stringify(snapShotData, null, 2)}`);
-    
         const lastSnapShot = this.loadSnapshot(connection);
-        console.log(`lastSnapShot: ${lastSnapShot}`);
-        console.log(`[SnapShotService] lastSnapShot: ${JSON.stringify(lastSnapShot, null, 2)}`);
     
         const relativePath = snapShotData.relativePath;
     
@@ -99,7 +94,6 @@ export class SnapShotService {
     
         // 변경된 스냅샷 저장
         this.saveSnapshot(lastSnapShot, connection);
-        console.log(`[SnapShotService] Snapshot updated for: ${relativePath}`);
     }
     
     public generateSnapshotData(connection: FolderConnectionSettings, path: string, isUnlinked: boolean = false): SnapshotFile {
@@ -264,7 +258,6 @@ export class SnapShotService {
         const snapshotPath = pathModule.join(pluginDataPath, `${connection.id}.json`);
         if (fs.existsSync(snapshotPath)) {
             fs.unlinkSync(snapshotPath);
-            console.log(`[SnapShotService] Snapshot 파일 삭제 완료: ${snapshotPath}`);
         }
     }
 }

@@ -65,8 +65,6 @@ export class SyncInternalManager {
 
     public async handleAddFile(path: string, connection: FolderConnectionSettings){
 
-        console.log(`[SyncInternalManager] 파일 추가됨: ${path}`);
-
         /* State 초기화 */
         // const createdAt = Date.now();
 
@@ -126,7 +124,6 @@ export class SyncInternalManager {
 
     public async handleChangeFile(path: string, connection: FolderConnectionSettings){
 
-        console.log(`[SyncInternalManager] 파일 변경됨: ${path}`);
         // const modifiedAt = Date.now();
         //     // state[path]가 없으면 초기화
         // if (!this.state[path]) {
@@ -166,7 +163,6 @@ export class SyncInternalManager {
     }
 
     public async handleDeleteFile(path: string, connection: FolderConnectionSettings){
-        console.log(`[SyncInternalManager] 파일 삭제됨: ${path}`);
 
         // const deletedAt = Date.now();
         // if (!this.state[path]) {
@@ -180,7 +176,6 @@ export class SyncInternalManager {
         // this.state[path].deletedAt = deletedAt; 
 
         const deleteFileType = await this.checkDeleteFileType(path, connection);
-        console.log(`[SyncInternalManager] deleteFileType: ${deleteFileType}`);
 
         switch(deleteFileType){
             case DeleteFileType.USER_DELETE_MD:
@@ -201,10 +196,8 @@ export class SyncInternalManager {
 
     /* Delete Folder */
     public async handleDeleteFolder(path: string, connection: FolderConnectionSettings){
-        console.log(`[SyncInternalManager] 폴더 삭제됨: ${path}`);
 
         const deleteFolderType = await this.checkDeleteFolderType(path, connection);
-        console.log(`[SyncInternalManager] deleteFolderType: ${deleteFolderType}`);
 
         switch(deleteFolderType){
             case DeleteFolderType.USER_DELETE_FOLDER:

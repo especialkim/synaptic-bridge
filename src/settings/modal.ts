@@ -16,12 +16,12 @@ export class RemoveConnectionModal extends Modal {
 		contentEl.empty();
         contentEl.addClass("markdown-hijacker-modal");
 
-		contentEl.createEl("h4", { text: `"${this.connectionName}" 연결을 삭제하시겠습니까?` });
+		contentEl.createEl("h4", { text: `Are you sure you want to remove the connection "${this.connectionName}"?` });
 
 		const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container' });
 
-		const yesButton = buttonContainer.createEl("button", { text: "예" });
-		const noButton = buttonContainer.createEl("button", { text: "아니오" });
+		const yesButton = buttonContainer.createEl("button", { text: "Yes" });
+		const noButton = buttonContainer.createEl("button", { text: "No" });
 
 		yesButton.addClass("mod-cta");
 		yesButton.onclick = () => {

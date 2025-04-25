@@ -24,7 +24,6 @@ export class SyncExternalChangeEvent {
         }
 
         /* Internal File 업데이트 */
-        console.log('[SyncExternalChangeEvent] syncFileToInternal 호출');
         await this.plugin.syncService.syncFileToInternal(path, this.connection);
         return;
     }
