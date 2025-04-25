@@ -3,8 +3,8 @@
 	"name": "Markdown Hijacker",
 	"version": "0.1.0",
 	"minAppVersion": "0.15.0",
-	"description": "Don't ask permission. Just hijack it. Hijack your markdowns from external folders. Live sync with Obsidian Vault—on your terms.",
-	"author": "Yongmin Kim",
-	"authorUrl": "https://github.com/yongminkim",
-	"isDesktopOnly": false
+	"description": "Beyond the Vault. One hub for every Markdown, everywhere",
+	"author": "Yongmini",
+	"authorUrl": "https://x.com/Facilitate4U",
+	"isDesktopOnly": true
 }
