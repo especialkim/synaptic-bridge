@@ -39,7 +39,7 @@ export class SnapShotService {
     ): void {
         try {
             const basePath = (this.app.vault.adapter as any).getBasePath?.() || '';
-            const pluginDataPath = pathModule.join(basePath, '.obsidian', 'plugins', 'obsidian-markdown-hijacker', 'data');
+            const pluginDataPath = pathModule.join(basePath, '.obsidian', 'plugins', 'markdown-hijacker', 'data');
             const snapshotPath = pathModule.join(pluginDataPath, `${connection.id}.json`);
     
             fs.mkdirSync(pluginDataPath, { recursive: true });
@@ -57,7 +57,7 @@ export class SnapShotService {
         connection: FolderConnectionSettings
     ): Snapshot {
         const basePath = (this.app.vault.adapter as any).getBasePath?.() || '';
-        const pluginDataPath = pathModule.join(basePath, '.obsidian', 'plugins', 'obsidian-markdown-hijacker', 'data');
+        const pluginDataPath = pathModule.join(basePath, '.obsidian', 'plugins', 'markdown-hijacker', 'data');
         const snapshotPath = pathModule.join(pluginDataPath, `${connection.id}.json`);
     
         if (!fs.existsSync(snapshotPath)) {
@@ -254,7 +254,7 @@ export class SnapShotService {
 
     public deleteSnapshotFile(connection: FolderConnectionSettings): void {
         const basePath = (this.app.vault.adapter as any).getBasePath?.() || '';
-        const pluginDataPath = pathModule.join(basePath, '.obsidian', 'plugins', 'obsidian-markdown-hijacker', 'data');
+        const pluginDataPath = pathModule.join(basePath, '.obsidian', 'plugins', 'markdown-hijacker', 'data');
         const snapshotPath = pathModule.join(pluginDataPath, `${connection.id}.json`);
         if (fs.existsSync(snapshotPath)) {
             fs.unlinkSync(snapshotPath);
