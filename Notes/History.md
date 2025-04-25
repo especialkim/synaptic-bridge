@@ -111,9 +111,9 @@
   - [x] bidirectionalType 옵션 숨기기
   - [x] Set Internal 옵션 숨기기
   - [x] Sync 제목 눌렀을 때 범위 선택되게 하기
-  - [ ] Exclude Paths, Required Paths, File Extentions Text Area로 교체?
-    - [ ] PlaceHolder 만들기
-- [ ] 탐색기에 동기화 폴더 표시하기
+  - [x] Exclude Paths, Required Paths, File Extentions Text Area로 교체?
+    - [x] PlaceHolder 만들기
+- [toTBD] 탐색기에 동기화 폴더 표시하기
 - [toTBD] 삭제 이벤트 할 때 같은 이름 있으면 어떻하지? 덮어써?
 - [drop] 탐색기에 동기화 폴더는 마우스 우클릭하면 이동하기 추가하기 -> 이건 필요 없음, 어차피 파인터로 열기 있음 or 다른 플러그인으로
 - [ ] 문서 작성
@@ -121,7 +121,16 @@
   
 ## TBD
 
-- [to TBD] 삭제 이벤트 할 때 같은 이름 있으면 어떻하지? 덮어써? 내비둬?
+- [ ] 삭제 이벤트 할 때 같은 이름 있으면 어떻하지? 덮어써? 내비둬?
+- [ ] 탐색기에 동기화 폴더 표시하기
+  - 동기화 되고 있는 파일은 🟢 또는 🔄 과 같이 표시하기 이모지 말고 좀 이쁜거로
+  - 동기화 목록에서 삭제하면.
+    - data 파일을 삭제 하지 말고, isDeleted 상태로 저장
+    - ⚫ 🔴 등으로 표시
+    - 위 빨간색이나 검정색을 눌리면 선택 모달
+      - 다시 동기화?
+      - 아예 삭제?
+        - 데이터 파일 자체 삭제 및 아이콘 표시 제거
 
 ## Future
 

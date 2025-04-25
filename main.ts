@@ -8,6 +8,7 @@ import { ExternalWatcher } from 'src/watchers/ExternalWatcher';
 import { SnapShotService } from 'src/sync/SnapShotService';
 import { SyncService } from 'src/sync/SyncService';
 import { SyncInternalManager } from 'src/sync/SyncInternalManager';
+import { ExplorerSyncDecorator } from 'src/explorer/ExplorerSyncDecorator';
 
 // 이벤트 타입 확장
 declare module 'obsidian' {
@@ -48,6 +49,8 @@ export default class MarkdownHijacker extends Plugin {
 	/* Internal Sync Manager */
 	syncInternalManager: SyncInternalManager;
 
+	explorerSyncDecorator: ExplorerSyncDecorator;
+
 	async onload() {
 		console.log('MarkdownHijacker plugin loaded');
 		
@@ -73,6 +76,8 @@ export default class MarkdownHijacker extends Plugin {
 			this.externalWatcher.setupWatcher();
 			this.internalWatcher = new InternalWatcher(this.app, this);
 			this.internalWatcher.setupWatcher();
+			this.explorerSyncDecorator = new ExplorerSyncDecorator(this.app, this);
+			this.explorerSyncDecorator.setup();
 		});
 		
 		/* 설정 변경 이벤트 리스너 등록 */
@@ -95,6 +100,14 @@ export default class MarkdownHijacker extends Plugin {
 		// Make sure to stop the watcher when the plugin is unloaded
 		if (this.externalWatcher) {
 			this.externalWatcher.stopWatching();
+		}
+
+		if (this.internalWatcher) {
+			this.internalWatcher.clearEvents();
+		}
+
+		if (this.explorerSyncDecorator) {
+			this.explorerSyncDecorator.cleanup();
 		}
 	}
 }

@@ -177,3 +177,9 @@
 .vault-folder-item:hover {
   color: var(--color-accent);
 }
+
+/* Explorer Sync Decorator */
+.sync-folder-badge {
+  display: inline-flex;
+  vertical-align: middle;
+}
