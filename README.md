@@ -2,22 +2,28 @@
 
 > Beyond the Vault. One hub for every Markdown, everywhere.
 
-Markdown Hijacker is an Obsidian plugin that synchronizes markdown files between your Obsidian Vault and external folders. With this plugin, you can synchronize markdown files in various ways between internal and external locations to improve your workflow.
+Markdown Hijacker is an Obsidian plugin that synchronizes markdown and any file extensions you specify between your Obsidian Vault and external folders. With this plugin, you can keep your notes and documents in sync across different locations and tools, improving your workflow and flexibility.
 
 ## Key Features
 
-- **Multiple Folder Mappings**: Connect multiple external folders to your Vault folders
-- **Flexible Synchronization**: Support for one-way (External→Vault, Vault→External) or bidirectional sync
-- **Real-time File Monitoring**: Automatic synchronization when files change
-- **Customizable Settings**: Include/exclude specific folders/files, customize file deletion handling, and more
-- **Metadata Preservation**: Automatic management of file metadata (frontmatter)
-- **Status Indicator**: View synchronization status in the Obsidian status bar
+- **Multiple Folder Mappings**: Connect multiple external folders to your Vault folders.
+- **Flexible Synchronization**:
+    - One-way sync (External → Vault): Import changes from external folders into your Vault.
+    - One-way sync (Vault → External): Export changes from your Vault to external folders.
+    - Bidirectional sync: Keep both Vault and external folders in sync, reflecting changes both ways.
+- **Real-time File Monitoring**: Automatically synchronize files as soon as changes are detected.
+- **Offline Change Detection**: If changes are made to external folders while Obsidian is closed, the plugin will detect and synchronize those changes the next time Obsidian is launched.
+- **Customizable Settings**: Include or exclude specific folders/files, specify which file extensions to sync, and customize how deletions are handled.
+- **Metadata Preservation**: Automatically manage file metadata (frontmatter) for tracking and sync status.
+- **Deletion Handling Options**: Choose whether deletions actually remove files, or simply mark them as deleted by changing metadata and adding a "❌" prefix to the filename.
+- **Status Indicator**: View synchronization status in the Obsidian status bar.
 
 ## Use Cases
 
-- **Integrate Existing Markdown Documents**: Bring your existing markdown documents from other locations into your Obsidian Vault
-- **Collaborate with External Tools**: Maintain synchronization when working with other markdown editors or Git repositories
-- **Backup and Redundancy**: Automatically back up important documents or manage synchronization across multiple locations
+- **Integrate Existing Markdown Documents**: Bring your existing markdown documents (and other supported file types) from other locations into your Obsidian Vault.
+- **Backup and Redundancy**: Automatically back up important documents or manage synchronization across multiple locations.
+- **Edit Notes Without Obsidian**: You can edit your notes for programming, study, or other purposes without having to open Obsidian—just use your favorite editor in the external folder.
+- **Freedom with Other Markdown Apps**: Freely use other markdown-based apps in their own independent space, while keeping everything in sync with your Vault.
 
 ## Installation
 
@@ -34,48 +40,56 @@ Markdown Hijacker is an Obsidian plugin that synchronizes markdown files between
 
 ### 2. Folder Mapping Setup
 
-1. Click "Add Folder Mapping" to create a new mapping
+When you change any option in Folder Mapping Setup or Advanced Settings, the corresponding sync will be automatically disabled for safety. After updating all settings, make sure to re-enable the mapping to resume synchronization.
+
+1. Click "Add Folder Mapping" to create a new mapping.
 2. For each mapping, configure:
-   - **Vault Path**: Relative path within your Vault (can be selected with the folder finder button)
-   - **External Folder Path**: Absolute path to the external folder to synchronize (can be selected with the folder selection button)
-   - **Enable Mapping**: Toggle to activate this specific mapping
+    2.1 **Vault Path**: Relative path within your Vault (can be selected with the folder finder button).
+    2.2 **External Folder Path**: Absolute path to the external folder to synchronize (can be selected with the folder selection button).
+    2.3 **Enable Mapping**: Toggle to activate this specific mapping after all settings are updated.
 
 ### 3. Advanced Settings
 
-- **Synchronization Direction**: 
-  - External→Vault: Import external changes to Vault only
-  - Vault→External: Export Vault changes to external folders only
-  - Bidirectional: Reflect changes in both directions
+When you change any option in Advanced Settings, the corresponding sync will be automatically disabled. Please update all desired settings, then re-enable the mapping to apply changes and resume synchronization.
 
-- **Bidirectional Sync Settings** (when bidirectional sync is selected):
-  - Merge: Merge changes from both sides
-  - External Priority: External files take precedence in conflicts
-  - Internal Priority: Vault files take precedence in conflicts
+1. **Synchronization Direction**:
+    - External→Vault: Import external changes to Vault only
+    - Vault→External: Export Vault changes to external folders only
+    - Bidirectional: Reflect changes in both directions
 
-- **Deleted File Handling**:
-  - Property Change: Mark as deleted (add "❌" prefix to filename)
-  - Complete Deletion: Fully delete from connected folder
+2. **Bidirectional Sync Settings** (when bidirectional sync is selected):
+    - Merge: Merge changes from both sides
+    - External Priority: External files take precedence in conflicts
+    - Internal Priority: Vault files take precedence in conflicts
 
-- **Filtering Options**:
-  - Ignore Hidden Files: Exclude hidden files (files starting with .) from sync
-  - Exclude/Include Folders: Exclude or include specific folders from synchronization
-  - Specify Extensions: Synchronize only specific file extensions (.md, .txt, etc.)
+3. **Deleted File Handling**:
+    - Property Change: Mark as deleted (add "❌" prefix to filename and update metadata)
+    - Complete Deletion: Fully delete from connected folder
+
+4. **Filtering Options**:
+    - Ignore Hidden Files: Exclude hidden files (files starting with .) from sync
+    - Exclude/Include Folders: Exclude or include specific folders from synchronization
+    - Specify Extensions: Synchronize only specific file extensions (.md, .txt, etc.)
+    - **Note:** If include options are set, exclude options will be ignored.
 
 ## Usage Tips
 
 1. **Initial Setup and Initialization**:
-   - When a mapping is activated, an initial scan automatically runs to synchronize existing files.
+    - When a mapping is activated, an initial scan automatically runs to synchronize existing files.
 
 2. **Status Monitoring**:
-   - Check the current synchronization status in the Obsidian status bar.
+    - Check the current synchronization status in the Obsidian status bar.
 
 3. **Conflict Resolution**:
-   - When using bidirectional synchronization, conflicts are automatically resolved according to your priority settings.
-   - It's recommended to back up important data before using bidirectional synchronization.
+    - When using bidirectional synchronization, conflicts are automatically resolved according to your priority settings.
+    - It's recommended to back up important data before using bidirectional synchronization.
 
 4. **Checking Changes**:
-   - Synchronization-related metadata is added to the frontmatter.
-   - This information allows you to verify the original location and synchronization status of files.
+    - Synchronization-related metadata is added to the frontmatter.
+    - This information allows you to verify the original location and synchronization status of files.
+
+5. **Make Good Use of Filtering Options**:
+    - Filtering options help you limit synchronization to only the files and folders you need. Use include/exclude and extension filters to optimize performance and avoid unnecessary syncs.
 
 ## Important Notes
 
@@ -83,20 +97,7 @@ Markdown Hijacker is an Obsidian plugin that synchronizes markdown files between
 - Resource usage may increase when synchronizing frequently changing files.
 - Errors may occur if external paths are invalid.
 - Unexpected synchronization conflicts may arise if the same file is modified through different methods.
-
-## Troubleshooting
-
-1. **If Synchronization Isn't Working**:
-   - Check if the plugin is enabled
-   - Verify that mappings are activated
-   - Check access permissions for external paths
-
-2. **Files Being Deleted**:
-   - Change "Deleted File Handling" setting to "Property Change"
-
-3. **Performance Issues**:
-   - Reduce the number of files/folders being synchronized
-   - Use filtering options to synchronize only necessary files
+- **Disclaimer:** The developer of this plugin is not responsible for any data loss, sync conflicts, or other issues that may arise from its use. Please use at your own risk and make regular backups of important data.
 
 ## License
 
