@@ -61,13 +61,15 @@ export class SyncInternalAddEvent {
         const externalPath = this.plugin.syncService.getExternalPath(relativePath, connection);
 
         try {
-            // 외부 폴더 생성 (상위 폴더까지 재귀적으로 생성)
             await fs.mkdir(externalPath, { recursive: true });
-        } catch (error: any) {
-            // 이미 폴더가 존재하는 경우 무시
-            if (error.code === 'EEXIST') {
+        } catch (error) {
+            if (this.isNodeError(error) && error.code === 'EEXIST') {
                 return;
             }
         }
+    }
+    
+    private isNodeError(error: unknown): error is NodeJS.ErrnoException {
+        return typeof error === 'object' && error !== null && 'code' in error;
     }
 }

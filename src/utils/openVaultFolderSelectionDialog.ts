@@ -24,8 +24,6 @@ export function openVaultFolderSelectionDialog(app: App): Promise<string | null>
 				// 트리 컨테이너
 				const treeContainer = contentEl.createDiv({ cls: 'vault-folder-tree-container' });
 				const tree = treeContainer.createDiv({ cls: 'vault-folder-tree' });
-				tree.style.maxHeight = '400px';
-				tree.style.overflowY = 'auto';
 		
 				// 루트 폴더 가져오기
 				const folders = this.getAllFolders()
@@ -38,9 +36,6 @@ export function openVaultFolderSelectionDialog(app: App): Promise<string | null>
 		
 				// 취소 버튼
 				const footer = contentEl.createDiv({ cls: 'vault-modal-footer' });
-				footer.style.display = 'flex';
-				footer.style.justifyContent = 'flex-end';
-				footer.style.marginTop = '15px';
 		
 				const cancelBtn = footer.createEl('button', {
 					text: '취소',
@@ -57,33 +52,30 @@ export function openVaultFolderSelectionDialog(app: App): Promise<string | null>
 			}
 		
 			private getAllFolders(): TFolder[] {
-				return this.app.vault.getAllLoadedFiles().filter(f => f instanceof TFolder) as TFolder[];
+				return this.app.vault.getAllLoadedFiles().filter((f): f is TFolder => f instanceof TFolder);
 			}
 		
 			private createNode(container: HTMLElement, folder: TFolder, depth: number) {
 				const itemEl = container.createDiv({ cls: 'vault-folder-item' });
-				itemEl.style.display = 'flex';
-				itemEl.style.alignItems = 'center';
-				itemEl.style.padding = '4px 0';
-				itemEl.style.cursor = 'pointer';
-				itemEl.style.paddingLeft = `${depth * 20}px`;
+				itemEl.addClass('vault-folder-depth-' + Math.min(depth, 10));
 		
 				// 접기/펼치기 아이콘
 				const toggleEl = itemEl.createSpan({ cls: 'vault-folder-toggle' });
 				setIcon(toggleEl, 'chevron-right');
-				toggleEl.style.marginRight = '6px';
 		
 				// 폴더 아이콘
 				const folderIconEl = itemEl.createSpan({ cls: 'vault-folder-icon' });
 				setIcon(folderIconEl, 'folder');
-				folderIconEl.style.marginRight = '6px';
 		
 				// 폴더 이름
+				const subfolderCount = folder.children.filter(c => c instanceof TFolder).length;
 				const nameEl = itemEl.createSpan({ text: folder.name, cls: 'vault-folder-name' });
+				if (subfolderCount > 0) {
+					itemEl.createSpan({ text: ` (${subfolderCount})`, cls: 'vault-folder-count' });
+				}
 		
 				// 자식 컨테이너
 				const childrenContainer = container.createDiv({ cls: 'vault-folder-children collapsed' });
-				childrenContainer.style.transition = 'max-height 0.2s ease-out';
 		
 				// 토글 이벤트
 				toggleEl.addEventListener('click', (e) => {
@@ -92,7 +84,7 @@ export function openVaultFolderSelectionDialog(app: App): Promise<string | null>
 					setIcon(toggleEl, isCollapsed ? 'chevron-right' : 'chevron-down');
 		
 					if (!isCollapsed && childrenContainer.childElementCount === 0) {
-						const subfolders = folder.children.filter(c => c instanceof TFolder) as TFolder[];
+						const subfolders = folder.children.filter((c): c is TFolder => c instanceof TFolder);
 						subfolders.sort((a, b) => a.name.localeCompare(b.name)).forEach(sub => {
 							this.createNode(childrenContainer, sub, depth + 1);
 						});
@@ -107,10 +99,10 @@ export function openVaultFolderSelectionDialog(app: App): Promise<string | null>
 		
 				// 호버 스타일
 				itemEl.addEventListener('mouseenter', () => {
-					itemEl.style.backgroundColor = 'var(--background-modifier-hover)';
+					itemEl.addClass('is-hovered');
 				});
 				itemEl.addEventListener('mouseleave', () => {
-					itemEl.style.backgroundColor = '';
+					itemEl.removeClass('is-hovered');
 				});
 			}
 		}

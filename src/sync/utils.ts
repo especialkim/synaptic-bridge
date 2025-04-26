@@ -1,6 +1,6 @@
 import matter from 'gray-matter';
 import * as fs from 'fs';
-import { App } from 'obsidian';
+import { App, FileSystemAdapter } from 'obsidian';
 
 export async function fsReadFrontmatter(filePath: string): Promise<matter.GrayMatterFile<string>> {
     const content = await fsReadFile(filePath);
@@ -33,7 +33,7 @@ export async function fsWriteFileAsync(filePath: string, raw: string): Promise<v
 }
 
 export function getVaultName(app: App): string {
-    const basePath = (app.vault.adapter as any).getBasePath?.();
+    const basePath = (app.vault.adapter as FileSystemAdapter).getBasePath?.();
     if (!basePath) return "Obsidian";
     
     // 경로에서 마지막 폴더 이름을 Vault 이름으로 사용

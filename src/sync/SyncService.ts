@@ -1,11 +1,12 @@
 import MarkdownHijacker from "main";
-import { App } from "obsidian";
+import { App, FileSystemAdapter } from "obsidian";
 import { FolderConnectionSettings } from "src/settings/types";
 import * as pathModule from 'path';
 import * as fs from 'fs/promises';
 import * as fsSync from 'fs';
 import { getVaultName } from "./utils";
 import matter from "gray-matter";
+import { Frontmatter } from "./types/frontmatter";
 
 export class SyncService {
     private app: App;
@@ -69,7 +70,7 @@ export class SyncService {
         }
     }
 
-    public generateFrontmatter(path: string, connection: FolderConnectionSettings, isUnlinked: boolean = false): any {
+    public generateFrontmatter(path: string, connection: FolderConnectionSettings, isUnlinked: boolean = false): Frontmatter {
 
         const relativePath = this.getRelativePath(path, connection);
         const internalPath = this.getInternalPath(relativePath, connection);
@@ -138,7 +139,7 @@ export class SyncService {
 
     public getInternalAbsolutePath(relativePath: string, connection: FolderConnectionSettings): string {
         const internalPath = this.getInternalPath(relativePath, connection);
-        return (this.app.vault.adapter as any).getBasePath() + '/' + internalPath;
+        return (this.app.vault.adapter as FileSystemAdapter).getBasePath() + '/' + internalPath;
     }
 
     public async deleteFileActionPropertyOnExternal(path: string, connection: FolderConnectionSettings, isMarkdown: boolean = true) {
@@ -381,9 +382,8 @@ export class SyncService {
             }
             try {
                 await fs.mkdir(folderPath);
-            } catch (mkdirError: any) {
-                // 이미 존재하는 경우 무시
-                if ((mkdirError as any).code !== "EEXIST") {
+            } catch (mkdirError) {
+                if (isNodeError(mkdirError) && mkdirError.code !== "EEXIST") {
                     throw mkdirError;
                 }
             }
@@ -395,4 +395,8 @@ export class SyncService {
         const { data } = matter(content);
         return { data, content };
     }
+}
+
+function isNodeError(error: unknown): error is NodeJS.ErrnoException {
+    return typeof error === 'object' && error !== null && 'code' in error;
 }

@@ -1,6 +1,8 @@
+import MarkdownHijacker from "main";
+
 export interface BaseSuggestProps {
     inputEl: HTMLInputElement;
-    plugin: any;
+    plugin: MarkdownHijacker;
 }
 
 export abstract class BaseSuggest<T> {

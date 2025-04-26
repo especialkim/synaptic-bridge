@@ -13,7 +13,7 @@ import { ExplorerSyncDecorator } from 'src/explorer/ExplorerSyncDecorator';
 // 이벤트 타입 확장
 declare module 'obsidian' {
 	interface Workspace extends Events {
-		on(name: 'markdown-hijacker:settings-changed', callback: () => any): EventRef;
+		on(name: 'markdown-hijacker:settings-changed', callback: () => void): EventRef;
 		trigger(name: 'markdown-hijacker:settings-changed'): void;
 	}
 }
@@ -82,6 +82,7 @@ export default class MarkdownHijacker extends Plugin {
 		/* 설정 변경 이벤트 리스너 등록 */
 		this.registerEvent(
 			this.app.workspace.on('markdown-hijacker:settings-changed', () => {
+				console.log('settings-changed');
 				if (this.externalWatcher) {
 					this.externalWatcher.setupWatcher();
 				}

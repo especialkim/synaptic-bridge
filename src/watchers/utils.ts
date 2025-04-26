@@ -1,6 +1,6 @@
 import { FSWatcher } from "chokidar";
 import { Stats } from "fs";
-import { App } from "obsidian";
+import { App, FileSystemAdapter } from "obsidian";
 import * as path from "path";
 import { FolderConnectionSettings } from "src/settings";
 
@@ -11,7 +11,7 @@ export function ignoreFilter(
 ): (fullPath: string, stats: Stats) => boolean {
   const { externalPath, internalPath, excludeFolders, includeFolders, extensions, ignoreHiddenFiles } = connection;
   
-  const internalAbsolutePath = (app.vault.adapter as any).getBasePath() + '/' + internalPath;
+  const internalAbsolutePath = (app.vault.adapter as FileSystemAdapter).getBasePath() + '/' + internalPath;
   const loweredExtensions = extensions.map(e => e.toLowerCase());
   const loweredExcludes = excludeFolders.map(f => f.toLowerCase());
   const loweredIncludes = includeFolders.map(f => f.toLowerCase());

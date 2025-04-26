@@ -37,6 +37,6 @@ export function disableSync(connection: FolderConnectionSettings, syncToggleComp
 }
 
 export async function saveSettings(plugin: MarkdownHijacker) {
-    await plugin.saveData(plugin.settings);    
-    (plugin.app.workspace as any).trigger('markdown-hijacker:settings-changed');
+    await plugin.saveData(plugin.settings);
+    plugin.app.workspace.trigger('markdown-hijacker:settings-changed');
 }

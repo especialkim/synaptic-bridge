@@ -1,10 +1,11 @@
 import MarkdownHijacker from "main";
-import { App } from "obsidian";
+import { App, FileSystemAdapter } from "obsidian";
 import { SyncType, BidirectionalType, DeletedFileAction, FolderConnectionSettings,  } from "../settings/types";
 import * as fs from "fs";
 import * as pathModule from "path";
 import chokidar, { FSWatcher } from 'chokidar';
 import { getAllWatchedPaths, ignoreFilter } from "src/watchers/utils";
+import { getPluginDataPath } from "src/utils/pathUtils";
 
 export type SnapshotFile = {
     externalRootPath: string;
@@ -38,8 +39,7 @@ export class SnapShotService {
         connection: FolderConnectionSettings
     ): void {
         try {
-            const basePath = (this.app.vault.adapter as any).getBasePath?.() || '';
-            const pluginDataPath = pathModule.join(basePath, '.obsidian', 'plugins', 'markdown-hijacker', 'data');
+            const pluginDataPath = getPluginDataPath(this.app.vault);
             const snapshotPath = pathModule.join(pluginDataPath, `${connection.id}.json`);
     
             fs.mkdirSync(pluginDataPath, { recursive: true });
@@ -56,8 +56,7 @@ export class SnapShotService {
     public loadSnapshot(
         connection: FolderConnectionSettings
     ): Snapshot {
-        const basePath = (this.app.vault.adapter as any).getBasePath?.() || '';
-        const pluginDataPath = pathModule.join(basePath, '.obsidian', 'plugins', 'markdown-hijacker', 'data');
+        const pluginDataPath = getPluginDataPath(this.app.vault);
         const snapshotPath = pathModule.join(pluginDataPath, `${connection.id}.json`);
     
         if (!fs.existsSync(snapshotPath)) {
@@ -98,7 +97,7 @@ export class SnapShotService {
     
     public generateSnapshotData(connection: FolderConnectionSettings, path: string, isUnlinked: boolean = false): SnapshotFile {
         const relativePath = path.replace(connection.externalPath, '').replace(connection.internalPath, '');
-        const internalFileSystemPath = (this.app.vault.adapter as any).getBasePath() + '/' + connection.internalPath + '/' + relativePath;
+        const internalFileSystemPath = (this.app.vault.adapter as FileSystemAdapter).getBasePath() + '/' + connection.internalPath + '/' + relativePath;
         const internalModified = fs.statSync(internalFileSystemPath).mtime.getTime();
     
         return {
@@ -113,7 +112,7 @@ export class SnapShotService {
 
     public getCurrentStateSnapshot(connection: FolderConnectionSettings, path: string): SnapshotFile {
         const relativePath = path.replace(connection.externalPath, '').replace(connection.internalPath, '');
-        const internalFileSystemPath = (this.app.vault.adapter as any).getBasePath() + '/' + connection.internalPath + '/' + relativePath;
+        const internalFileSystemPath = (this.app.vault.adapter as FileSystemAdapter).getBasePath() + '/' + connection.internalPath + '/' + relativePath;
         const fileExists = fs.existsSync(path);
         const internalExists = fs.existsSync(internalFileSystemPath);
         const isUnlinked = !(fileExists && internalExists);
@@ -131,7 +130,7 @@ export class SnapShotService {
     public getCurrentStateSnapShotOfInternalRoot(connection: FolderConnectionSettings): Promise<SnapshotFile[]> {
         return new Promise((resolve) => {
             const internalRoot = connection.internalPath;
-            const adapter = this.app.vault.adapter as any;
+            const adapter = this.app.vault.adapter as FileSystemAdapter;
             const obsidianBasePath = adapter.getBasePath();
             const internalAbsolutePath = obsidianBasePath + '/' + internalRoot;
             let watcher: FSWatcher;
@@ -185,20 +184,20 @@ export class SnapShotService {
             const originalRelativePath = relativePath.replace(/^\/?❌\s*/, '/');
     
             /* linkedFiles/unLinkedFiles에서 원본/이모지 경로 모두 삭제 */
-            lastSnapShot.linkedFiles = lastSnapShot.linkedFiles.filter((item: any) => item.relativePath !== originalRelativePath && item.relativePath !== relativePath);
-            lastSnapShot.unLinkedFiles = lastSnapShot.unLinkedFiles.filter((item: any) => item.relativePath !== originalRelativePath && item.relativePath !== relativePath);
+            lastSnapShot.linkedFiles = lastSnapShot.linkedFiles.filter((item: SnapshotFile) => item.relativePath !== originalRelativePath && item.relativePath !== relativePath);
+            lastSnapShot.unLinkedFiles = lastSnapShot.unLinkedFiles.filter((item: SnapshotFile) => item.relativePath !== originalRelativePath && item.relativePath !== relativePath);
     
             /* 내부/외부 파일 존재 여부 및 실제 존재하는 경로로 unLinkedFiles 등록 */
-            const origInternalAbsolutePath = (this.app.vault.adapter as any).getBasePath() + '/' + (connection.internalPath ? `${connection.internalPath}/${originalRelativePath}`.replace(/\\/g, '/') : originalRelativePath);
+            const origInternalAbsolutePath = (this.app.vault.adapter as FileSystemAdapter).getBasePath() + '/' + (connection.internalPath ? `${connection.internalPath}/${originalRelativePath}`.replace(/\\/g, '/') : originalRelativePath);
             const origExternalPath = connection.externalPath + originalRelativePath;
             const origInternalExists = fs.existsSync(origInternalAbsolutePath);
             const origExternalExists = fs.existsSync(origExternalPath);
-            const emojiInternalAbsolutePath = (this.app.vault.adapter as any).getBasePath() + '/' + (connection.internalPath ? `${connection.internalPath}/${relativePath}`.replace(/\\/g, '/') : relativePath);
+            const emojiInternalAbsolutePath = (this.app.vault.adapter as FileSystemAdapter).getBasePath() + '/' + (connection.internalPath ? `${connection.internalPath}/${relativePath}`.replace(/\\/g, '/') : relativePath);
             const emojiInternalExists = fs.existsSync(emojiInternalAbsolutePath);
             if ((origInternalExists || emojiInternalExists) && !origExternalExists) {
                 /* 실제 존재하는 경로로 등록 */
                 const unlinkedPath = emojiInternalExists ? relativePath : originalRelativePath;
-                let info = lastSnapShot.linkedFiles.find((item: any) => item.relativePath === unlinkedPath);
+                let info = lastSnapShot.linkedFiles.find((item: SnapshotFile) => item.relativePath === unlinkedPath);
                 if (!info) {
                     const statPath = emojiInternalExists ? emojiInternalAbsolutePath : origInternalAbsolutePath;
                     info = {
@@ -219,22 +218,22 @@ export class SnapShotService {
         }
     
         /* 내부/외부 모두 없으면 완전 삭제 */
-        const internalAbsolutePath = (this.app.vault.adapter as any).getBasePath() + '/' + (connection.internalPath ? `${connection.internalPath}/${relativePath}`.replace(/\\/g, '/') : relativePath);
+        const internalAbsolutePath = (this.app.vault.adapter as FileSystemAdapter).getBasePath() + '/' + (connection.internalPath ? `${connection.internalPath}/${relativePath}`.replace(/\\/g, '/') : relativePath);
         const externalPath = connection.externalPath + relativePath;
         const internalExists = fs.existsSync(internalAbsolutePath);
         const externalExists = fs.existsSync(externalPath);
         if (!internalExists && !externalExists) {
-            lastSnapShot.linkedFiles = lastSnapShot.linkedFiles.filter((item: any) => item.relativePath !== relativePath);
-            lastSnapShot.unLinkedFiles = lastSnapShot.unLinkedFiles.filter((item: any) => item.relativePath !== relativePath);
+            lastSnapShot.linkedFiles = lastSnapShot.linkedFiles.filter((item: SnapshotFile) => item.relativePath !== relativePath);
+            lastSnapShot.unLinkedFiles = lastSnapShot.unLinkedFiles.filter((item: SnapshotFile) => item.relativePath !== relativePath);
             this.saveSnapshot(lastSnapShot, connection);
             return;
         }
     
         /* 둘 중 하나만 있으면 unlinked 처리 */
-        const idx = lastSnapShot.linkedFiles.findIndex((item: any) => item.relativePath === relativePath);
+        const idx = lastSnapShot.linkedFiles.findIndex((item: SnapshotFile) => item.relativePath === relativePath);
         if (idx !== -1) {
             const file = { ...lastSnapShot.linkedFiles[idx], isUnlinked: true };
-            const unlinkedIdx = lastSnapShot.unLinkedFiles.findIndex((item: any) => item.relativePath === relativePath);
+            const unlinkedIdx = lastSnapShot.unLinkedFiles.findIndex((item: SnapshotFile) => item.relativePath === relativePath);
             if (unlinkedIdx !== -1) {
                 lastSnapShot.unLinkedFiles[unlinkedIdx] = file;
             } else {
@@ -244,7 +243,7 @@ export class SnapShotService {
             this.saveSnapshot(lastSnapShot, connection);
             return;
         }
-        const unlinkedIdx = lastSnapShot.unLinkedFiles.findIndex((item: any) => item.relativePath === relativePath);
+        const unlinkedIdx = lastSnapShot.unLinkedFiles.findIndex((item: SnapshotFile) => item.relativePath === relativePath);
         if (unlinkedIdx !== -1) {
             lastSnapShot.unLinkedFiles[unlinkedIdx].isUnlinked = true;
             this.saveSnapshot(lastSnapShot, connection);
@@ -253,8 +252,7 @@ export class SnapShotService {
     }
 
     public deleteSnapshotFile(connection: FolderConnectionSettings): void {
-        const basePath = (this.app.vault.adapter as any).getBasePath?.() || '';
-        const pluginDataPath = pathModule.join(basePath, '.obsidian', 'plugins', 'markdown-hijacker', 'data');
+        const pluginDataPath = getPluginDataPath(this.app.vault);
         const snapshotPath = pathModule.join(pluginDataPath, `${connection.id}.json`);
         if (fs.existsSync(snapshotPath)) {
             fs.unlinkSync(snapshotPath);

@@ -1,10 +1,10 @@
-import { Plugin } from "obsidian";
+import MarkdownHijacker from "main";
 
 export class StatusBarManager {
 	private statusBarEl: HTMLElement;
 
 	constructor(
-		private plugin: Plugin,
+		private plugin: MarkdownHijacker,
 		private label: string = "Markdown Hijacker"
 	) {
 		this.statusBarEl = this.plugin.addStatusBarItem();
@@ -20,7 +20,7 @@ export class StatusBarManager {
 	}
 
 	update() {
-		const isEnabled = (this.plugin as any).settings.enableGlobalSync;
+		const isEnabled = this.plugin.settings.enableGlobalSync;
 		const statusSymbol = isEnabled ? '🟢' : '⚪️';
 		this.statusBarEl.setText(`${statusSymbol} Hijacker`);
 	}
