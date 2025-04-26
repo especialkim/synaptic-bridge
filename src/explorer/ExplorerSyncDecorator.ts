@@ -92,8 +92,19 @@ export class ExplorerSyncDecorator {
                     const badge = document.createElement('span');
                     badge.className = 'sync-folder-badge';
                     badge.title = 'This folder is being synced';
-                    badge.innerHTML = `<svg width="10" height="10" style="vertical-align: middle;"><circle cx="5" cy="5" r="4" fill="var(--color-accent)"/></svg>`;
-                    badge.style.marginLeft = '6px';
+                    // SVG를 DOM API로 안전하게 생성
+                    const svgNS = "http://www.w3.org/2000/svg";
+                    const svg = document.createElementNS(svgNS, "svg");
+                    svg.setAttribute("width", "10");
+                    svg.setAttribute("height", "10");
+                    svg.classList.add("sync-folder-badge-svg");
+                    const circle = document.createElementNS(svgNS, "circle");
+                    circle.setAttribute("cx", "5");
+                    circle.setAttribute("cy", "5");
+                    circle.setAttribute("r", "4");
+                    circle.setAttribute("fill", "var(--color-accent)");
+                    svg.appendChild(circle);
+                    badge.appendChild(svg);
                     contentEl.appendChild(badge);
                     this.decoratedPaths.add(dataPath);
                 }

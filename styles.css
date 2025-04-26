@@ -139,10 +139,6 @@
   font-size: 0.9em;
 }
 
-.sync-connection-item summary {
-  /* list-style: none;          */
-}
-
 .sync-connection-item summary::-webkit-details-marker {
   display: none;            /* 웹킷 계열 (Chrome, Edge 등)에서 마커 제거 */
 }
@@ -182,4 +178,58 @@
 .sync-folder-badge {
   display: inline-flex;
   vertical-align: middle;
+  margin-left: 6px; /* 이미 있음 */
+}
+.sync-folder-badge-svg {
+  vertical-align: middle;
+}
+
+/* Markdown Hijacker Settings */
+.markdown-hijacker-settings textarea {
+  min-height: 100px;
+  width: 180px;
+  resize: none;
+}
+
+/* BaseSuggest */
+.markdown-hijacker-settings .hidden {
+  display: none !important;
+}
+
+.markdown-hijacker-settings .input-suggest-wrapper {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+.markdown-hijacker-settings .suggestion-container {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  z-index: 9999;
+  background: var(--background-primary, #fff);
+  border: 1px solid var(--divider-color, #ccc);
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  max-height: 300px;
+  overflow-y: auto;
+  min-width: 120px;
+  padding: 0.2em 0;
+}
+
+.markdown-hijacker-settings .suggestion-item.is-selected {
+  background: var(--color-accent, #e0e0ff);
+  color: var(--text-on-accent, #222);
+}
+
+.markdown-hijacker-settings .input-suggest-wrapper input{
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+.markdown-hijacker-settings .suggestion-item{
+  text-align: left;
+  word-break: break-all;
 }

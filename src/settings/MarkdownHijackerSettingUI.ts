@@ -322,10 +322,6 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 								.filter(folder => folder !== '');
 							await saveSettings(this.plugin);
 						});
-					// 스타일 적용
-					textarea.inputEl.style.minHeight = "100px";
-					textarea.inputEl.style.width = "180px";
-					textarea.inputEl.style.resize = "none"; // 크기 조절 비활성화
 				});
 
 			new Setting(advancedContent)
@@ -342,9 +338,6 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 								.filter(folder => folder !== '');
 							await saveSettings(this.plugin);
 						});
-					textarea.inputEl.style.minHeight = "100px";
-					textarea.inputEl.style.width = "180px";
-					textarea.inputEl.style.resize = "none";
 				});
 
 			new Setting(advancedContent)
@@ -363,9 +356,6 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 								.filter(ext => ext !== '');
 							await saveSettings(this.plugin);
 						});
-					textarea.inputEl.style.minHeight = "100px";
-					textarea.inputEl.style.width = "180px";
-					textarea.inputEl.style.resize = "none";
 				});
 
 			const actionsContainer = itemBody.createDiv({ cls: 'sync-actions-container' });

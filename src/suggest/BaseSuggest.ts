@@ -8,12 +8,19 @@ export abstract class BaseSuggest<T> {
     protected selectedIndex = -1;
 
     constructor(protected props: BaseSuggestProps) {
-        this.suggestEl = createDiv('suggestion-container');
-        this.initializeEventListeners();
-        
-        if (!document.body.contains(this.suggestEl)) {
-            document.body.appendChild(this.suggestEl);
+        // 1. Create wrapper if not exists
+        const inputEl = this.props.inputEl;
+        let wrapper = inputEl.closest('.input-suggest-wrapper') as HTMLElement | null;
+        if (!wrapper) {
+            wrapper = createDiv('input-suggest-wrapper');
+            inputEl.parentNode?.insertBefore(wrapper, inputEl);
+            wrapper.appendChild(inputEl);
         }
+        // 2. Create suggestEl and append to wrapper
+        this.suggestEl = createDiv('suggestion-container');
+        this.suggestEl.addClass('hidden');
+        wrapper.appendChild(this.suggestEl);
+        this.initializeEventListeners();
     }
 
     protected initializeEventListeners(): void {
@@ -23,7 +30,7 @@ export abstract class BaseSuggest<T> {
         inputEl.addEventListener('focus', () => this.onInputChanged());
         inputEl.addEventListener('blur', () => {
             setTimeout(() => {
-                this.suggestEl.style.display = 'none';
+                this.suggestEl.addClass('hidden');
             }, 100);
         });
         inputEl.addEventListener('keydown', this.handleKeyDown.bind(this));
@@ -43,11 +50,11 @@ export abstract class BaseSuggest<T> {
             case 'Enter':
                 event.preventDefault();
                 this.selectCurrentSuggestion();
-                this.suggestEl.style.display = 'none';
+                this.suggestEl.addClass('hidden');
                 break;
             case 'Escape':
                 event.preventDefault();
-                this.suggestEl.style.display = 'none';
+                this.suggestEl.addClass('hidden');
                 this.selectedIndex = -1;
                 break;
         }
@@ -82,7 +89,7 @@ export abstract class BaseSuggest<T> {
     protected onInputChanged(): void {
         const inputStr = this.props.inputEl.value.toLowerCase();
         if (!inputStr) {
-            this.suggestEl.style.display = 'none';
+            this.suggestEl.addClass('hidden');
             return;
         }
 
@@ -108,7 +115,7 @@ export abstract class BaseSuggest<T> {
             const selectedValue = suggestions[this.selectedIndex].textContent;
             if (selectedValue) {
                 this.props.inputEl.value = selectedValue;
-                this.suggestEl.style.display = 'none';
+                this.suggestEl.addClass('hidden');
                 this.selectedIndex = -1;
                 const evt = new Event('input', { bubbles: true });
                 this.props.inputEl.dispatchEvent(evt);
@@ -132,20 +139,15 @@ export abstract class BaseSuggest<T> {
                 
                 suggestionEl.addEventListener('click', () => {
                     this.props.inputEl.value = this.getDisplayText(match);
-                    this.suggestEl.style.display = 'none';
+                    this.suggestEl.addClass('hidden');
                     this.selectedIndex = -1;
                     const evt = new Event('input', { bubbles: true });
                     this.props.inputEl.dispatchEvent(evt);
                 });
             });
-            
-            const rect = this.props.inputEl.getBoundingClientRect();
-            this.suggestEl.style.top = `${rect.bottom}px`;
-            this.suggestEl.style.left = `${rect.left}px`;
-            this.suggestEl.style.width = `${rect.width}px`;
-            this.suggestEl.style.display = 'block';
+            this.suggestEl.removeClass('hidden');
         } else {
-            this.suggestEl.style.display = 'none';
+            this.suggestEl.addClass('hidden');
             this.selectedIndex = -1;
         }
     }
