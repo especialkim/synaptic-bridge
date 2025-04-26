@@ -34,6 +34,15 @@ export abstract class BaseSuggest<T> {
             }, 100);
         });
         inputEl.addEventListener('keydown', this.handleKeyDown.bind(this));
+
+        // 마우스가 suggestion list 전체를 벗어나면 키보드 선택 상태로 복귀
+        this.suggestEl.addEventListener('mouseleave', () => {
+            const suggestions = this.suggestEl.querySelectorAll('.suggestion-item');
+            suggestions.forEach(item => item.removeClass('is-selected'));
+            if (this.selectedIndex >= 0 && this.selectedIndex < suggestions.length) {
+                suggestions[this.selectedIndex].addClass('is-selected');
+            }
+        });
     }
 
     // 공통 키보드 이벤트 처리
@@ -65,9 +74,8 @@ export abstract class BaseSuggest<T> {
         const suggestions = this.suggestEl.querySelectorAll('.suggestion-item');
         if (!suggestions.length) return;
 
-        if (this.selectedIndex >= 0) {
-            suggestions[this.selectedIndex].removeClass('is-selected');
-        }
+        // 항상 모든 is-selected 제거
+        suggestions.forEach(item => item.removeClass('is-selected'));
 
         if (direction === 'up') {
             this.selectedIndex = this.selectedIndex <= 0 ? suggestions.length - 1 : this.selectedIndex - 1;
@@ -133,6 +141,7 @@ export abstract class BaseSuggest<T> {
                     cls: 'suggestion-item',
                 });
                 
+                // 키보드 선택 상태만 반영 (마우스는 이벤트에서 처리)
                 if (index === this.selectedIndex) {
                     suggestionEl.addClass('is-selected');
                 }
@@ -143,6 +152,14 @@ export abstract class BaseSuggest<T> {
                     this.selectedIndex = -1;
                     const evt = new Event('input', { bubbles: true });
                     this.props.inputEl.dispatchEvent(evt);
+                });
+
+                // 마우스 호버 시 is-selected 적용 및 selectedIndex 갱신
+                suggestionEl.addEventListener('mouseenter', () => {
+                    const allItems = this.suggestEl.querySelectorAll('.suggestion-item');
+                    allItems.forEach(item => item.removeClass('is-selected'));
+                    suggestionEl.addClass('is-selected');
+                    this.selectedIndex = index;
                 });
             });
             this.suggestEl.removeClass('hidden');

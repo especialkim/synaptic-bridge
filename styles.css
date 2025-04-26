@@ -208,19 +208,16 @@
   left: 0;
   width: 100%;
   z-index: 9999;
-  background: var(--background-primary, #fff);
-  border: 1px solid var(--divider-color, #ccc);
+  background: var(--background-secondary);
+  border: 1px solid var(--divider-color);
   border-radius: 6px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
   max-height: 300px;
   overflow-y: auto;
   min-width: 120px;
-  padding: 0.2em 0;
 }
 
 .markdown-hijacker-settings .suggestion-item.is-selected {
-  background: var(--color-accent, #e0e0ff);
-  color: var(--text-on-accent, #222);
+  background: var(--background-modifier-hover);
 }
 
 .markdown-hijacker-settings .input-suggest-wrapper input{
@@ -232,4 +229,8 @@
 .markdown-hijacker-settings .suggestion-item{
   text-align: left;
   word-break: break-all;
+}
+
+.markdown-hijacker-settings .suggestion-item:hover {
+  cursor: pointer;
 }
