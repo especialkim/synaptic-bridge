@@ -11,6 +11,7 @@ export const DEFAULT_SETTINGS : MarkdownHijackerSettings = {
     enableGlobalSync: false,
     syncInterval: 2000,
     debugMode: false,
+	showStatusBar: true,
 	connections: []
 }
 
@@ -384,6 +385,24 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 						}).open();
 					}));
 		});
+
+		/* Miscellaneous */
+		const miscellaneousSection = containerEl.createDiv({ cls: 'setting-section' });
+
+		miscellaneousSection.createEl('h2', { text: 'Miscellaneous' });
+
+		new Setting(miscellaneousSection)
+			.setName('Show Status Bar')
+			.setDesc('Show the status bar at the bottom of Obsidian.')
+			.addToggle(toggle => {
+				toggle.setValue(this.plugin.settings.showStatusBar)
+					.onChange(async (value) => {
+						this.plugin.settings.showStatusBar = value;
+						await saveSettings(this.plugin);
+						// 상태바 표시/숨김 즉시 반영
+						this.plugin.statusBar?.update();
+					});
+			}); 
 
 		/* Maintenance */
         // const maintenanceSection = containerEl.createDiv({ cls: 'setting-section' })

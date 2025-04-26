@@ -215,7 +215,7 @@ export class SyncService {
         /* 폴더가 없거나 비어있으면 바로 삭제 */
         if (!internalFolder || internalFolder.children.length === 0) {
             if (internalFolder) {
-                await this.app.vault.delete(internalFolder, true);
+                await this.app.fileManager.trashFile(internalFolder);
             }
             return;
         }
@@ -286,7 +286,7 @@ export class SyncService {
 
         /* 폴더 삭제 */
         if (internalFolder && internalFolder.children.length === 0) {
-            await this.app.vault.delete(internalFolder, true);
+            await this.app.fileManager.trashFile(internalFolder);
         }
 
         /* (선택) 스냅샷 삭제 : Folder는 Snapshot 없음 */

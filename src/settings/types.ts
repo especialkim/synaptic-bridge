@@ -36,5 +36,6 @@ export interface MarkdownHijackerSettings {
 	enableGlobalSync: boolean;           // 전체 동기화 토글 (마스터 스위치)
 	syncInterval: number;                // 동기화 간격 (밀리초 단위)
 	debugMode: boolean;                  // 디버그 모드 (콘솔 로그 출력용)
+	showStatusBar: boolean;              // 상태 바 표시 여부
 	connections: FolderConnectionSettings[];         // 폴더 동기화 매핑 목록
 }; 

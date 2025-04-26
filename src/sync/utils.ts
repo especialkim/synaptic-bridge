@@ -8,15 +8,15 @@ export async function fsReadFrontmatter(filePath: string): Promise<matter.GrayMa
     return frontmatter;
 }
 
-export async function fsUpdateFrontmatter(filePath: string, frontmatter: Record<string, any>): Promise<void> {
-    const raw = await fsReadFile(filePath);
-    const { data, content } = matter(raw);
+// export async function fsUpdateFrontmatter(filePath: string, frontmatter: Record<string, any>): Promise<void> {
+//     const raw = await fsReadFile(filePath);
+//     const { data, content } = matter(raw);
   
-    const merged = { ...data, ...frontmatter };
-    const updatedContent = matter.stringify(content, merged);
+//     const merged = { ...data, ...frontmatter };
+//     const updatedContent = matter.stringify(content, merged);
   
-    await fs.promises.writeFile(filePath, updatedContent, 'utf8');
-}
+//     await fs.promises.writeFile(filePath, updatedContent, 'utf8');
+// }
 
 export async function fsReadFile(filePath: string): Promise<string> {
     const content = await fs.promises.readFile(filePath, 'utf8');

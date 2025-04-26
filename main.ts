@@ -68,6 +68,7 @@ export default class MarkdownHijacker extends Plugin {
 
 		/* Status Bar */
 		this.statusBar = new StatusBarManager(this);
+		this.statusBar.toggleVisibility(this.settings.showStatusBar);
 
 		/* Main */
 		this.app.workspace.onLayoutReady(() => {
@@ -82,7 +83,6 @@ export default class MarkdownHijacker extends Plugin {
 		/* 설정 변경 이벤트 리스너 등록 */
 		this.registerEvent(
 			this.app.workspace.on('markdown-hijacker:settings-changed', () => {
-				console.log('settings-changed');
 				if (this.externalWatcher) {
 					this.externalWatcher.setupWatcher();
 				}
@@ -92,6 +92,9 @@ export default class MarkdownHijacker extends Plugin {
 
 				if (this.explorerSyncDecorator) {
 					this.explorerSyncDecorator.decorateAllSyncFolders();
+				}
+				if (this.statusBar) {
+					this.statusBar.toggleVisibility(this.settings.showStatusBar);
 				}
 			})
 		);
