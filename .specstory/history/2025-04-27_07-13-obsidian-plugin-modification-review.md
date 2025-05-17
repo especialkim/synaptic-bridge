@@ -1061,6 +1061,148 @@ _**User**_
 
 _**Assistant**_
 
+```diff
+          const globalSection = containerEl.createDiv({ cls: 'setting-section' })
+  
+- 		globalSection.createEl('h2', { text: 'Global Settings' });
++ 		new Setting(globalSection).setName('Global synchronization').setHeading();
+  
+  		new Setting(globalSection)
+- 			.setName('Global Synchronization')
++ 			.setName('Global synchronization')
+  			.setDesc('Enable or disable global synchronization')
+  			.addToggle(toggle => toggle
+```
+
+```diff
+  		const sectionHeader = syncConnectionsSection.createDiv({ cls: 'setting-section-header sync-connections-header' });
+  
+- 		sectionHeader.createEl('h2', { text: 'Sync Connections' });
++ 		new Setting(sectionHeader).setName('Sync connections').setHeading();
+  
+  		new Setting(sectionHeader)
+```
+
+```diff
+  
+  			new Setting(itemHeaderRight)
+- 				.setName('Sync Status')
++ 				.setName('Sync status')
+  				.addToggle(toggle => {
+  					syncToggleComponent = toggle;
+```
+
+```diff
+  			
+  			// 이름 텍스트 추가
+- 			vaultSetting.infoEl.createSpan({ text: 'Internal Path(Obsidian)' });
++ 			vaultSetting.infoEl.createSpan({ text: 'Internal path (Obsidian)' });
+  			
+  			vaultSetting
+```
+
+```diff
+  			setIcon(externalIconSpan, 'folder')
+  
+- 			externalSetting.infoEl.createSpan({ text: 'External Path' });
++ 			externalSetting.infoEl.createSpan({ text: 'External path' });
+  			
+  			externalSetting
+```
+
+```diff
+  
+  			new Setting(advancedContent)
+- 				.setName('Sync Type')
++ 				.setName('Sync type')
+  				.setDesc('Select the sync type')
+  				.addDropdown(dropdown => dropdown
+```
+
+```diff
+  			
+  			new Setting(advancedContent)
+- 				.setName('Deleted File Action')
++ 				.setName('Deleted file action')
+  				.setDesc('Select the action to take when a file is deleted')
+  				.addDropdown(dropdown => dropdown
+```
+
+```diff
+  
+  			new Setting(advancedContent)
+- 				.setName('Ignore Hidden Files and Folders')
++ 				.setName('Ignore hidden files and folders')
+  				.setDesc('Example: Default hidden folders starting with .')
+  				.addToggle(toggle => toggle
+```
+
+```diff
+  
+  			new Setting(advancedContent)
+- 				.setName('Exclude Subfolder Names')
++ 				.setName('Exclude subfolder names')
+  				.setDesc('Subfolders to exclude from sync, one per line.')
+  				.addTextArea(textarea => {
+```
+
+```diff
+  
+  			new Setting(advancedContent)
+- 				.setName('Include Subfolder Names')
++ 				.setName('Include subfolder names')
+  				.setDesc('Only sync these subfolders (overrides exclude).')
+  				.addTextArea(textarea => {
+```
+
+```diff
+  
+  			new Setting(advancedContent)
+- 				.setName('File Extensions')
++ 				.setName('File extensions')
+  				.setDesc('Enter one extension per line (e.g., md, txt)')
+  				.addTextArea(textarea => {
+```
+
+```diff
+  		const miscellaneousSection = containerEl.createDiv({ cls: 'setting-section' });
+  
+- 		miscellaneousSection.createEl('h2', { text: 'Miscellaneous' });
++ 		new Setting(miscellaneousSection).setName('Miscellaneous').setHeading();
+  
+  		new Setting(miscellaneousSection)
+- 			.setName('Show Status Bar')
++ 			.setName('Show status bar')
+  			.setDesc('Show the status bar at the bottom of Obsidian.')
+  			.addToggle(toggle => {
+```
+
+---
+
+지적사항에 따라 아래와 같이 코드를 수정했습니다.
+
+- `createEl('h2', ...)`로 직접 생성하던 상단 제목(예: "Global Settings", "Sync Connections", "Miscellaneous")을 모두 제거하고,
+  - 대신 `new Setting(...).setName('...').setHeading();` 형식으로 섹션 구분을 표준화했습니다.
+- 모든 설정명, 버튼, 설명 등 UI 텍스트를 **sentence case**(첫 글자만 대문자, 나머지 소문자)로 일괄 변경했습니다.
+  - 예: "Global Synchronization" → "Global synchronization"
+  - 예: "Sync Status" → "Sync status"
+  - 예: "Internal Path(Obsidian)" → "Internal path (Obsidian)"
+  - 예: "Show Status Bar" → "Show status bar"
+  - 기타 모든 UI 텍스트에 적용
+
+이제 Obsidian 플러그인 리뷰 가이드에 맞는 UI/UX 구조로 개선되었습니다.  
+추가로 더 점검할 부분이 있으면 말씀해 주세요!
+
+---
+
+_**User**_
+
+so github 에 push 하고 싶다.
+
+---
+
+_**Assistant**_
+
 
 
 ---
