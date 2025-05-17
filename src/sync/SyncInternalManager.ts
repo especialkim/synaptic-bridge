@@ -1,12 +1,8 @@
 import MarkdownHijacker from "main";
-import { App, TFile } from "obsidian";
+import { App } from "obsidian";
 import { FolderConnectionSettings } from "src/settings/types";
-import { FrontmatterManager } from "src/frontmatter/FrontmatterManager";
-import { getVaultName } from "./utils";
-import matter from "gray-matter";
 import * as fs from 'fs';
 import * as pathModule from 'path';
-import { delay } from "src/utils/delay";
 import { AddFileType, ChangeFileType, DeleteFileType, DeleteFolderType, SyncInternalManagerState } from "./types/internalSyncTypes";
 import { SyncInternalAddEvent } from "./SyncInternalAddEvent";
 import { SyncInternalChangeEvent } from "./SyncInternalChangeEvent";
@@ -79,7 +75,7 @@ export class SyncInternalManager {
         // const getState = () => this.state[path];
 
         /* Event 처리 대기 */
-        // await delay(500);
+        // await sleep(500);
         // if(getState().modifiedAt !== 0 && getState().renamedAt !== 0 && getState().deletedAt !== 0) return;
 
 

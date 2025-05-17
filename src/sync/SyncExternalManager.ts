@@ -2,7 +2,6 @@ import MarkdownHijacker from "main";
 import { App } from "obsidian";
 import { FolderConnectionSettings } from "src/settings/types";
 import * as fs from 'fs';
-import { delay } from "src/utils/delay";
 import { SyncExternalManagerState, AddFileType, ChangeFileType, DeleteFileType, DeleteFolderType } from "./types";
 import { SyncExternalDeleteEvent } from "./SyncExternalDeleteEvent";
 import { SyncExternalAddEvent } from "./SyncExternalAddEvent";
@@ -52,7 +51,7 @@ export class SyncExternalManager {
         const getState = () => this.state[path];
 
         /* Event 처리 대기 */
-        await delay(100);
+        await sleep(100);
         if(getState().modifiedAt !== 0 && getState().renamedAt !== 0 && getState().deletedAt !== 0) return;
 
         /* Check Add Type */
