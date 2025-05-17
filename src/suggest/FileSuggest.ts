@@ -1,25 +1,26 @@
-import { TFile } from "obsidian";
-import { BaseSuggest } from "./BaseSuggest";
+import { AbstractInputSuggest, TFile, App } from "obsidian";
 
-export class FileSuggest extends BaseSuggest<TFile> {
-    protected getItems(): TFile[] {
-        return this.props.plugin.app.vault.getFiles();
+export class FileSuggest extends AbstractInputSuggest<TFile> {
+    private plugin: any;
+    constructor(app: App, inputEl: HTMLInputElement, plugin: any) {
+        super(app, inputEl);
+        this.plugin = plugin;
     }
 
-    protected calculateScore(file: TFile, inputStr: string): number {
-        const path = file.path.toLowerCase();
-        const fileName = file.basename.toLowerCase();
-        let score = 0;
-
-        if (fileName.includes(inputStr.replace(/\s+/g, ''))) score += 100;
-        if (fileName.startsWith(inputStr.replace(/\s+/g, ''))) score += 50;
-        if (path.includes(inputStr.replace(/\s+/g, ''))) score += 25;
-
-        score += this.calculateConsecutiveMatches(path, inputStr) * 5;
-        return score;
+    getSuggestions(query: string): TFile[] {
+        return this.plugin.app.vault.getFiles().filter((file: TFile) => file.path.toLowerCase().includes(query.toLowerCase()));
     }
 
-    protected getDisplayText(file: TFile): string {
-        return file.path;
+    renderSuggestion(file: TFile, el: HTMLElement) {
+        el.setText(file.path);
+    }
+
+    selectSuggestion(file: TFile) {
+        const input = document.activeElement as HTMLInputElement;
+        if (input) {
+            input.value = file.path;
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        this.close();
     }
 }

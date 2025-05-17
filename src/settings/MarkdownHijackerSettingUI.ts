@@ -74,10 +74,10 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 		/* Global Settings */
         const globalSection = containerEl.createDiv({ cls: 'setting-section' })
 
-		globalSection.createEl('h2', { text: 'Global Settings' });
+		new Setting(globalSection).setName('Global synchronization').setHeading();
 
 		new Setting(globalSection)
-			.setName('Global Synchronization')
+			.setName('Global synchronization')
 			.setDesc('Enable or disable global synchronization')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.enableGlobalSync)
@@ -102,7 +102,7 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
         const syncConnectionsSection = containerEl.createDiv({ cls: 'setting-section' });
 		const sectionHeader = syncConnectionsSection.createDiv({ cls: 'setting-section-header sync-connections-header' });
 
-		sectionHeader.createEl('h2', { text: 'Sync Connections' });
+		new Setting(sectionHeader).setName('Sync connections').setHeading();
 
 		new Setting(sectionHeader)
 			.addButton(button => button
@@ -152,7 +152,7 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 			let syncToggleComponent: ToggleComponent
 
 			new Setting(itemHeaderRight)
-				.setName('Sync Status')
+				.setName('Sync status')
 				.addToggle(toggle => {
 					syncToggleComponent = toggle;
 					toggle
@@ -188,7 +188,7 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 			setIcon(iconSpan, 'folder')
 			
 			// 이름 텍스트 추가
-			vaultSetting.infoEl.createSpan({ text: 'Internal Path(Obsidian)' });
+			vaultSetting.infoEl.createSpan({ text: 'Internal path (Obsidian)' });
 			
 			vaultSetting
 				.addText(text => {
@@ -199,10 +199,7 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 							disableSync(connection, syncToggleComponent);
 							await saveSettings(this.plugin);
 						})
-					new FolderSuggest({
-						inputEl: text.inputEl,
-						plugin: this.plugin
-					});
+					new FolderSuggest(this.app, text.inputEl, this.plugin);
 				})
 				.addButton(btn => btn
 					.setButtonText('📂')
@@ -223,7 +220,7 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 			const externalIconSpan = externalSetting.infoEl.createSpan();
 			setIcon(externalIconSpan, 'folder')
 
-			externalSetting.infoEl.createSpan({ text: 'External Path' });
+			externalSetting.infoEl.createSpan({ text: 'External path' });
 			
 			externalSetting
 				.addText(text => text
@@ -246,11 +243,11 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 					}));
 
 			const advancedSection = itemBody.createEl('details', { cls: 'sync-advanced-settings' });
-			advancedSection.createEl('summary', { text: 'Advanced Settings', cls: 'sync-advanced-toggle' });
+			advancedSection.createEl('summary', { text: 'Advanced settings', cls: 'sync-advanced-toggle' });
 			const advancedContent = advancedSection.createDiv({ cls: 'sync-advanced-content' });
 
 			new Setting(advancedContent)
-				.setName('Sync Type')
+				.setName('Sync type')
 				.setDesc('Select the sync type')
 				.addDropdown(dropdown => dropdown
 					.addOption(SyncType.bidirectional, 'Bidirectional')
@@ -285,7 +282,7 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 			// 	);
 			
 			new Setting(advancedContent)
-				.setName('Deleted File Action')
+				.setName('Deleted file action')
 				.setDesc('Select the action to take when a file is deleted')
 				.addDropdown(dropdown => dropdown
 					.addOption(DeletedFileAction.property, 'Property')
@@ -299,7 +296,7 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 				);
 
 			new Setting(advancedContent)
-				.setName('Ignore Hidden Files and Folders')
+				.setName('Ignore hidden files and folders')
 				.setDesc('Example: Default hidden folders starting with .')
 				.addToggle(toggle => toggle
 					.setValue(connection.ignoreHiddenFiles)
@@ -310,7 +307,7 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 					}));
 
 			new Setting(advancedContent)
-				.setName('Exclude Subfolder Names')
+				.setName('Exclude subfolder names')
 				.setDesc('Subfolders to exclude from sync, one per line.')
 				.addTextArea(textarea => {
 					textarea
@@ -326,7 +323,7 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 				});
 
 			new Setting(advancedContent)
-				.setName('Include Subfolder Names')
+				.setName('Include subfolder names')
 				.setDesc('Only sync these subfolders (overrides exclude).')
 				.addTextArea(textarea => {
 					textarea
@@ -342,7 +339,7 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 				});
 
 			new Setting(advancedContent)
-				.setName('File Extensions')
+				.setName('File extensions')
 				.setDesc('Enter one extension per line (e.g., md, txt)')
 				.addTextArea(textarea => {
 					textarea
@@ -389,10 +386,10 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 		/* Miscellaneous */
 		const miscellaneousSection = containerEl.createDiv({ cls: 'setting-section' });
 
-		miscellaneousSection.createEl('h2', { text: 'Miscellaneous' });
+		new Setting(miscellaneousSection).setName('Miscellaneous').setHeading();
 
 		new Setting(miscellaneousSection)
-			.setName('Show Status Bar')
+			.setName('Show status bar')
 			.setDesc('Show the status bar at the bottom of Obsidian.')
 			.addToggle(toggle => {
 				toggle.setValue(this.plugin.settings.showStatusBar)

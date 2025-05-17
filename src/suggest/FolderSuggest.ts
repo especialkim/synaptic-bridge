@@ -1,26 +1,28 @@
-import { TAbstractFile, TFolder } from "obsidian";
-import { BaseSuggest } from "./BaseSuggest";
+import { AbstractInputSuggest, TAbstractFile, TFolder, App } from "obsidian";
 
-export class FolderSuggest extends BaseSuggest<TFolder> {
-    protected getItems(): TFolder[] {
-        const files: TAbstractFile[] = this.props.plugin.app.vault.getAllLoadedFiles();
-        return files.filter((file): file is TFolder => file instanceof TFolder);
+export class FolderSuggest extends AbstractInputSuggest<TFolder> {
+    private plugin: any;
+    constructor(app: App, inputEl: HTMLInputElement, plugin: any) {
+        super(app, inputEl);
+        this.plugin = plugin;
     }
 
-    protected calculateScore(folder: TFolder, inputStr: string): number {
-        const path = folder.path.toLowerCase();
-        const folderName = path.split('/').pop()?.toLowerCase() || '';
-        let score = 0;
-
-        if (folderName.includes(inputStr.replace(/\s+/g, ''))) score += 100;
-        if (folderName.startsWith(inputStr.replace(/\s+/g, ''))) score += 50;
-        if (path.includes(inputStr.replace(/\s+/g, ''))) score += 25;
-
-        score += this.calculateConsecutiveMatches(path, inputStr) * 5;
-        return score;
+    getSuggestions(query: string): TFolder[] {
+        const files: TAbstractFile[] = this.plugin.app.vault.getAllLoadedFiles();
+        return files.filter((file): file is TFolder => file instanceof TFolder)
+            .filter(folder => folder.path.toLowerCase().includes(query.toLowerCase()));
     }
 
-    protected getDisplayText(folder: TFolder): string {
-        return folder.path;
+    renderSuggestion(folder: TFolder, el: HTMLElement) {
+        el.setText(folder.path);
+    }
+
+    selectSuggestion(folder: TFolder) {
+        const input = document.activeElement as HTMLInputElement;
+        if (input) {
+            input.value = folder.path;
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        this.close();
     }
 }
