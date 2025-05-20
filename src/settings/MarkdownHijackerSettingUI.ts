@@ -74,7 +74,7 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 		/* Global Settings */
         const globalSection = containerEl.createDiv({ cls: 'setting-section' })
 
-		new Setting(globalSection).setName('Global synchronization').setHeading();
+		// new Setting(globalSection).setName('Global synchronization').setHeading();
 
 		new Setting(globalSection)
 			.setName('Global synchronization')

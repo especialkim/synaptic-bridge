@@ -1203,9 +1203,304 @@ so github 에 push 하고 싶다.
 
 _**Assistant**_
 
+```bash
+git add . && git commit -m "refactor: apply PR review feedback (suggest UI, headings, sentence case, delay cleanup)" && git push
+```
 
+```
+[master d82e445] refactor: apply PR review feedback (suggest UI, headings, sente
+nce case, delay cleanup)
+ 1 file changed, 142 insertions(+)
+Enumerating objects: 63, done.
+Counting objects: 100% (63/63), done.
+Delta compression using up to 10 threads
+Compressing objects: 100% (48/48), done.
+Writing objects: 100% (51/51), 469.79 KiB | 10.68 MiB/s, done.
+Total 51 (delta 17), reused 0 (delta 0), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (17/17), completed with 8 local objects.
+To https://github.com/especialkim/markdown-hijacker.git
+   ee114fa..d82e445  master -> master
+
+```
 
 ---
+
+모든 변경사항을 커밋하고 GitHub의 기존 PR 브랜치(master)에 정상적으로 push 완료했습니다.
+
+이제 GitHub PR에서 변경사항이 반영된 것을 확인할 수 있습니다.  
+추가로 PR 코멘트에 진행상황이나 수정 요약을 남기면 리뷰어가 더 쉽게 확인할 수 있습니다.
+
+더 필요한 작업이 있으면 말씀해 주세요!
+
+---
+
+_**User**_
+
+릴리즈도 수정해야 하나? js 파일이랑 css ?
+
+---
+
+_**Assistant**_
+
+좋은 질문입니다!  
+Obsidian 플러그인 개발에서 **릴리즈(Release) 관련 파일(main.js, styles.css 등)을 수정/갱신해야 하는지**는 다음 기준에 따라 결정됩니다.
+
+---
+
+## 1. main.js (혹은 main.bundle.js 등)
+- **TypeScript/ESNext 소스(main.ts 등)를 수정했다면, 반드시 main.js를 다시 빌드해야 합니다.**
+- 이유: Obsidian은 실제로 main.js(혹은 main.bundle.js 등 빌드 산출물)를 로드해서 플러그인을 실행합니다.
+- **PR이나 릴리즈에 main.js가 포함되어야 리뷰어/사용자가 바로 테스트할 수 있습니다.**
+- 일반적으로 `npm run build` 또는 `yarn build` 명령어로 main.js가 갱신됩니다.
+
+---
+
+## 2. styles.css
+- **UI 스타일(색상, 레이아웃, 폰트 등) 관련 변경이 있다면 styles.css도 갱신해야 합니다.**
+- 만약 이번 PR에서 CSS 관련 변경이 없다면, styles.css는 그대로 두어도 됩니다.
+- 만약 CSS도 수정했다면, 반드시 최신 상태로 커밋해야 합니다.
+
+---
+
+## 3. manifest.json
+- 플러그인 버전, 최소/최대 Obsidian 버전, main.js 경로 등 메타데이터가 바뀌었다면 manifest.json도 갱신해야 합니다.
+- 단, 이번 PR에서 manifest.json의 변경이 없다면 그대로 두어도 무방합니다.
+
+---
+
+## 4. 실제 릴리즈(Release) 태그
+- GitHub Release(릴리즈 태그)는 보통 PR이 머지된 후,  
+  새 버전을 배포할 때(예: v1.2.3) 생성합니다.
+- 만약 이번 PR이 단순 리뷰 대응이고, 공식 배포가 목적이 아니라면  
+  Release 태그는 꼭 만들 필요는 없습니다.
+
+---
+
+## 결론/권장 액션
+
+- **main.js는 반드시 빌드 후 커밋/푸시**  
+  (예: `npm run build` → git add main.js → commit & push)
+- **styles.css는 변경이 있을 때만 갱신**
+- **manifest.json은 메타데이터 변경이 있을 때만 갱신**
+- **릴리즈 태그는 공식 배포 시에만 생성**
+
+---
+
+### 즉,  
+**main.js는 꼭 빌드해서 최신 상태로 올려야 하며,  
+styles.css와 manifest.json은 변경이 있을 때만 갱신하면 됩니다.**
+
+필요하다면 빌드 및 커밋 명령어도 안내해드릴 수 있습니다!  
+추가로 궁금한 점 있으면 언제든 질문해 주세요.
+
+---
+
+_**User**_
+
+굳이 버전 업까지 할 필요는 없지?
+
+---
+
+_**Assistant**_
+
+네, 맞아요!  
+**꼭 버전 업(버전 번호 증가)까지 할 필요는 없습니다.**  
+아래 상황에 따라 다릅니다.
+
+---
+
+## 버전 업이 **필요 없는 경우**
+- PR이 단순히 리뷰 피드백 반영, 버그 수정, UI 개선 등이고  
+  **공식적으로 새 릴리즈(Release)로 배포할 계획이 없다면**  
+  → 버전 업 없이 main.js만 갱신해서 커밋/푸시하면 충분합니다.
+- 팀/리뷰어가 “버전 업 해달라”는 별도 요청이 없다면  
+  → 기존 버전 그대로 두어도 무방합니다.
+
+---
+
+## 버전 업이 **필요한 경우**
+- **공식적으로 새 릴리즈(Release)로 배포**할 때  
+  (예: GitHub Release, Obsidian 플러그인 마켓 등록 등)
+- 사용자에게 “이 버전부터 새로운 기능/수정이 반영됨”을 명확히 알리고 싶을 때
+- manifest.json, versions.json 등에서 버전 번호가 중요한 경우
+
+---
+
+## 결론
+- **단순 PR/리뷰 대응, 내부 테스트 목적**이면 버전 업 필요 없음
+- **공식 배포/릴리즈 목적**이면 버전 업 필요
+
+---
+
+**지금 상황에서는 버전 업 없이 main.js만 빌드/커밋/푸시하면 충분합니다!**  
+추가로 궁금한 점 있으면 언제든 질문해 주세요.
+
+---
+
+_**User**_
+
+내 repo 에 push 해 놓으면 기존 PR 이 있으니 자동으로 업데이트 인식하겠지?
+
+---
+
+_**Assistant**_
+
+네, 맞습니다!  
+이미 **기존 PR(풀 리퀘스트)**가 열려 있는 상태에서  
+해당 브랜치(예: master, feature/xxx 등)에 추가로 커밋을 push하면  
+**PR이 자동으로 업데이트**되어 리뷰어가 바로 변경사항을 확인할 수 있습니다.
+
+### 동작 방식 요약
+
+- PR은 “특정 브랜치의 변경사항”을 기준으로 동작합니다.
+- 같은 브랜치에 커밋을 추가로 push하면  
+  → PR에 자동으로 반영(업데이트)됩니다.
+- GitHub UI에서 “Changed files” 탭에서 최신 변경사항을 바로 볼 수 있습니다.
+- 별도로 PR을 새로 만들 필요 없습니다.
+
+---
+
+**정리:**  
+- 기존 PR이 열려 있고, 같은 브랜치에 push하면  
+  → PR이 자동으로 최신 상태로 업데이트됩니다!
+
+추가로,  
+- 리뷰어에게 “추가 커밋/수정사항 반영했습니다”라고 코멘트 남기면  
+  더 원활한 커뮤니케이션이 가능합니다.
+
+더 궁금한 점 있으면 언제든 질문해 주세요!
+
+---
+
+_**User**_
+
+아 PR에 코멘트 남기면 된다는거지? 코멘트 머라고 남길까? 
+영어로 남겨야 하는데 써줘
+
+---
+
+_**Assistant**_
+
+네, 맞아요!  
+PR에 코멘트를 남기면 리뷰어가 변경사항 반영 및 진행상황을 쉽게 파악할 수 있습니다.
+
+아래는 **영어로 남길 수 있는 예시 코멘트**입니다.  
+(상황에 맞게 복사해서 사용하시면 됩니다.)
+
+---
+
+### PR 코멘트 예시 (영어)
+
+```
+I've addressed all the review feedback:
+
+- Removed custom BaseSuggest and migrated to Obsidian's AbstractInputSuggest for all suggest UIs.
+- Replaced all heading elements (h2) in the settings UI with `.setHeading()` as recommended.
+- Updated all UI labels and descriptions to use sentence case.
+- Removed the custom delay function and replaced it with the Obsidian API or standard alternatives.
+- Cleaned up unused code and improved overall code readability.
+
+All changes have been pushed to this branch.  
+Please let me know if there are any further issues or suggestions!
+
+Thank you for your detailed review.
+```
+
+---
+
+### 짧은 버전
+
+```
+All requested changes have been made:
+- Suggest UI now uses AbstractInputSuggest.
+- Headings and labels follow Obsidian guidelines.
+- Delay function and unused code removed.
+
+Let me know if anything else is needed. Thanks!
+```
+
+---
+
+**상황에 맞게 길이/내용을 조절해서 사용하시면 됩니다!**  
+더 구체적으로 남기고 싶은 내용이 있으면 말씀해 주세요.  
+(예: 특정 파일/이슈/버그에 대한 언급 등)
+
+---
+
+_**User**_
+
+여기에 이런 지적이 있어 어떻게 하라는거야?
+
+new Setting(globalSection).setName('Global synchronization').setHeading();
+There should not be a heading if there is only one setting below it, especially if it's using the same name as the setting.
+
+---
+
+_**Assistant**_
+
+좋은 질문입니다!  
+이 지적의 의미는 다음과 같습니다.
+
+---
+
+## 지적의 핵심
+
+- **"Global synchronization"**이라는 heading(섹션 제목)이 있는데,
+- 그 아래에 **실제로는 딱 하나의 설정 항목만**(예: "Global synchronization" 토글) 있다면,
+- **굳이 heading을 추가하지 말고, 바로 설정 항목만 보여주라**는 뜻입니다.
+- 특히 heading과 실제 설정명이 **동일하다면**(둘 다 "Global synchronization")  
+  → UI가 불필요하게 중복되고, 시각적으로도 어색해집니다.
+
+---
+
+## 어떻게 고치면 되나?
+
+- 아래 코드처럼 **heading 줄을 아예 삭제**하고,
+- 바로 설정 항목만 남기면 됩니다.
+
+### 예시 (수정 전)
+```ts
+new Setting(globalSection).setName('Global synchronization').setHeading();
+
+new Setting(globalSection)
+    .setName('Global synchronization')
+    .setDesc('Enable or disable global synchronization')
+    .addToggle(...);
+```
+
+### 예시 (수정 후)
+```ts
+// heading 줄 삭제!
+new Setting(globalSection)
+    .setName('Global synchronization')
+    .setDesc('Enable or disable global synchronization')
+    .addToggle(...);
+```
+
+---
+
+## 결론
+
+- **섹션에 설정이 하나뿐이고, heading과 설정명이 같으면 heading을 빼라!**
+- 즉,  
+  ```ts
+  new Setting(globalSection).setName('Global synchronization').setHeading();
+  ```
+  이 줄을 **삭제**하면 됩니다.
+
+---
+
+이렇게 하면 Obsidian 플러그인 UI 가이드에 더 부합하는 깔끔한 설정 화면이 됩니다!
+
+---
+
+_**User**_
+
+아 이해했어. 아 ㅈ사실은 이거 제목이 Global setting 인데 나중에 더 추가하려고 일단 헤딩을 뺴는게 바람직하겠지?
+
+---
+
+_**Assistant**_
 
 
 
