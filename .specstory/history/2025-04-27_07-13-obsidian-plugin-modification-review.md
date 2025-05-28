@@ -1502,7 +1502,141 @@ _**User**_
 
 _**Assistant**_
 
+네, 맞아요!  
+**지금은 설정 항목이 하나뿐이라면 heading(제목)을 빼는 것이 바람직합니다.**  
+Obsidian 플러그인 가이드도 “설정이 하나뿐이면 굳이 섹션 제목을 넣지 말라”고 권장합니다.
 
+### 이유
+- 설정이 하나뿐인데 heading이 있으면 UI가 어색하고, 중복처럼 보입니다.
+- 나중에 설정 항목이 여러 개로 늘어나면,  
+  그때 heading(예: “Global settings”)을 추가해도 전혀 늦지 않습니다.
+
+### 권장 흐름
+1. **지금은 heading 없이** 설정 항목만 보여주기
+2. **나중에 설정이 2개 이상으로 늘어나면**  
+   그때 heading(“Global settings”)을 추가
+
+---
+
+**정리:**  
+- 지금은 heading을 빼고,  
+- 나중에 설정이 늘어나면 heading을 추가하는 것이  
+  가장 깔끔하고 권장되는 방식입니다!
+
+궁금한 점 더 있으면 언제든 질문해 주세요.
+
+---
+
+_**User**_
+
+그냥 지금은 주석처리만 하면되겠네
+
+---
+
+_**Assistant**_
+
+네, 맞습니다!  
+**지금은 heading 줄만 주석 처리**해두면 됩니다.
+
+이렇게 하면:
+- UI에는 heading이 안 나오고,
+- 나중에 설정 항목이 늘어나면 주석만 해제해서 바로 heading을 추가할 수 있습니다.
+
+---
+
+### 예시
+
+```ts
+// new Setting(globalSection).setName('Global synchronization').setHeading();
+
+new Setting(globalSection)
+    .setName('Global synchronization')
+    .setDesc('Enable or disable global synchronization')
+    .addToggle(...);
+```
+
+---
+
+이렇게 주석 처리해두면  
+- 코드 관리도 쉽고,  
+- Obsidian 가이드도 잘 지킬 수 있습니다!
+
+필요하면 바로 적용해드릴 수도 있습니다.  
+추가로 궁금한 점 있으면 언제든 말씀해 주세요!
+
+---
+
+_**User**_
+
+그거야 내가 하면 되지 그럼 git commit 와 push 까지 해줘 그리고, 
+pr 이 코멘트의 답변에 적을 내용도 영어로 간단하게 알려줘
+
+---
+
+_**Assistant**_
+
+```bash
+git add . && git commit -m "fix: remove unnecessary heading for single global setting (per review feedback)" && git push
+```
+
+```
+[master a7cfde1] fix: remove unnecessary heading for single global setting (per
+review feedback)
+ 2 files changed, 296 insertions(+), 1 deletion(-)
+Enumerating objects: 15, done.
+Counting objects: 100% (15/15), done.
+Delta compression using up to 10 threads
+Compressing objects: 100% (7/7), done.
+Writing objects: 100% (8/8), 4.52 KiB | 4.52 MiB/s, done.
+Total 8 (delta 6), reused 0 (delta 0), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (6/6), completed with 6 local objects.
+To https://github.com/especialkim/markdown-hijacker.git
+   d82e445..a7cfde1  master -> master
+
+```
+
+---
+
+커밋 및 push가 완료되었습니다!
+
+---
+
+### PR 코멘트 답변(영어, 간단하게):
+
+```
+I've removed the unnecessary heading for the single global setting as suggested.  
+The heading is now commented out and can be re-enabled later if more settings are added.
+
+Thank you for the feedback!
+```
+
+이대로 PR에 남기시면 충분합니다!  
+더 필요한 내용이 있으면 말씀해 주세요.
+
+---
+
+_**User**_
+
+2번쨰 문장은 불필요한 내용 아니야? 깔끔하게 해줘
+
+---
+
+_**Assistant**_
+
+네, 맞아요!  
+두 번째 문장은 생략하고 더 간결하게 아래처럼 남기면 됩니다.
+
+---
+
+**PR 코멘트(영어, 깔끔하게):**
+
+```
+I've removed the unnecessary heading for the single global setting as suggested.
+
+Thank you for the feedback!
+```
+
+이렇게만 남기시면 충분히 명확하고 깔끔합니다!
 
 ---
 
