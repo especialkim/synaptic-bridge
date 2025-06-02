@@ -2,7 +2,6 @@
 
 ## 0.1.1
 
-- Changed plugin name from 'Markdown Hijacker' to 'Synaptic Bridge'
 - Changed UI menu language from Korean to English
 
 ## 0.1.0 (Initial Release)
