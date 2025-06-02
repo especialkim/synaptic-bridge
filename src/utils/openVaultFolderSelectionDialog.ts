@@ -15,9 +15,8 @@ export function openVaultFolderSelectionDialog(app: App): Promise<string | null>
 				contentEl.empty();
 				contentEl.addClass("markdown-hijacker-modal-folder-selection");
 		
-				// 제목
 				contentEl.createEl('h2', {
-					text: 'Vault 폴더 선택',
+					text: 'Select Vault Folder',
 					cls: 'vault-modal-title'
 				});
 		
@@ -34,11 +33,10 @@ export function openVaultFolderSelectionDialog(app: App): Promise<string | null>
 					this.createNode(tree, folder, 0);
 				});
 		
-				// 취소 버튼
 				const footer = contentEl.createDiv({ cls: 'vault-modal-footer' });
 		
 				const cancelBtn = footer.createEl('button', {
-					text: '취소',
+					text: 'Cacnel',
 					cls: 'vault-cancel-button'
 				});
 				cancelBtn.addEventListener('click', () => {
