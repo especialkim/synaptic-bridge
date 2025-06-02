@@ -17,7 +17,7 @@
   - Ensures compatibility with various workflows and external tools that rely on specific frontmatter formats.
 
 - **Selective GitHub Sync**  
-  Enable synchronization between specific folders in your Vault (not the entire Vault) and a GitHub repository.  
+  - Enable synchronization between specific folders in your Vault (not the entire Vault) and a GitHub repository.  
   - You can choose which folders to sync.
   - Only selected file types (e.g., `.md`, `.svg`, etc.) will be included.
   - Each folder can be mapped to a different repository or branch if needed.

@@ -118,3 +118,90 @@ Read file: RELEASE_NOTE.md
 
 ---
 
+_**User**_
+
+이정도면 나름 잘 정리된건가. 초반치고.
+
+---
+
+_**Assistant**_
+
+네, 현재 작성하신 **Release Note의 Future Roadmap** 구성은 초반 플러그인 개발 단계에서 매우 잘 정리된 편입니다.
+
+### 장점
+- **각 기능별로 제목과 상세 설명이 명확하게 구분**되어 있어, 개발자나 사용자 모두 앞으로 어떤 기능이 추가될지 한눈에 파악할 수 있습니다.
+- **Customizable Sync File Frontmatter (YAML)**, **Selective GitHub Sync**, **Blog Export Mode** 등 각 항목이 구체적으로 어떤 기능을 제공할지, 어떤 유저 니즈를 충족하는지 잘 설명되어 있습니다.
+- **리스트 형식**으로 세부 기능/특징을 정리해 가독성이 좋고, 추후 실제 구현 시 체크리스트로도 활용하기 좋습니다.
+
+### 개선/추천 포인트
+- 각 항목별로 **예상 적용 버전**이나 **우선순위**(예: [Planned], [In Progress], [Backlog] 등)를 추가하면 개발 로드맵 관리에 더 도움이 될 수 있습니다.
+- 향후 기능이 늘어나면, **카테고리별로 묶거나, 표 형식**으로 정리하는 것도 고려해볼 수 있습니다.
+- 만약 외부 기여자나 오픈소스 협업을 염두에 둔다면, 각 기능 옆에 간단한 "기여 환영" 표시나, 관련 이슈 링크를 추가하는 것도 좋습니다.
+
+---
+
+**결론:**  
+지금 상태로도 충분히 명확하고, 초반 로드맵으로서 손색이 없습니다!  
+이후 기능이 추가되거나, 우선순위가 바뀔 때마다 계속 업데이트해주시면 됩니다.
+
+추가로 궁금한 점이나, 더 구체적인 문서화/로드맵 관리 팁이 필요하시면 언제든 말씀해 주세요!
+
+---
+
+_**User**_
+
+@README.md 하단에 @RELEASE_NOTE.md 링크를 넣는 섹션이 있었으면 하는데 developer Information 위 였으면해
+
+---
+
+_**Assistant**_
+
+작업 순서와 목적을 먼저 설명드리겠습니다.
+
+---
+
+### 작업 목적 및 설명
+
+- **목적:**  
+  `README.md` 하단에 `RELEASE_NOTE.md`로 바로 이동할 수 있는 링크 섹션을 추가하여, 사용자가 최신/예정 기능 및 변경사항을 쉽게 확인할 수 있도록 합니다.
+- **위치:**  
+  "Developer Information" 섹션 바로 위에 새로운 "Release Notes" 섹션을 추가합니다.
+
+---
+
+### 추가될 예시
+
+```markdown
+## Release Notes
+
+- See the latest and upcoming features in [RELEASE_NOTE.md](./RELEASE_NOTE.md)
+```
+
+---
+
+### 실제 적용 계획
+
+1. "Developer Information" 섹션을 찾고, 그 바로 위에 위의 내용을 추가합니다.
+2. 전체적인 문서 흐름과 스타일을 맞춥니다.
+
+곧 적용하겠습니다.
+
+---
+
+```diff
+  - Unexpected synchronization conflicts may arise if the same file is modified through different methods.
+  - **Disclaimer:** The developer of this plugin is not responsible for any data loss, sync conflicts, or other issues that may arise from its use. Please use at your own risk and make regular backups of important data.
++ 
++ ## Release Notes
++ 
++ - See the latest and upcoming features in [RELEASE_NOTE.md](./RELEASE_NOTE.md)
+  
+  ## License
+```
+
+---
+
+
+
+---
+

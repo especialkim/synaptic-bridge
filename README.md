@@ -104,6 +104,10 @@ Markdown Hijacker is an Obsidian plugin that synchronizes markdown and any file 
 - Unexpected synchronization conflicts may arise if the same file is modified through different methods.
 - **Disclaimer:** The developer of this plugin is not responsible for any data loss, sync conflicts, or other issues that may arise from its use. Please use at your own risk and make regular backups of important data.
 
+## Release Notes
+
+- See the latest and upcoming features in [RELEASE_NOTE.md](./RELEASE_NOTE.md)
+
 ## License
 
 Distributed under the MIT License.
