@@ -1,7 +1,7 @@
 {
 	"id": "markdown-hijacker",
-	"name": "Markdown Hijacker",
-	"version": "0.1.1",
+	"name": "Synaptic Bridge",
+	"version": "0.1.2",
 	"minAppVersion": "0.15.0",
 	"description": "Beyond the Vault. One hub for every Markdown, everywhere",
 	"author": "Yongmini",

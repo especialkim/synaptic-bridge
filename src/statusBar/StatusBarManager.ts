@@ -5,7 +5,7 @@ export class StatusBarManager {
 
     constructor(
         private plugin: MarkdownHijacker,
-        private label: string = "Markdown Hijacker"
+        private label: string = "Synaptic Bridge"
     ) {
         this.statusBarEl = this.plugin.addStatusBarItem();
         this.update();
@@ -25,7 +25,7 @@ export class StatusBarManager {
     update() {
         const isEnabled = this.plugin.settings.enableGlobalSync;
         const statusSymbol = isEnabled ? '🟢' : '⚪️';
-        this.statusBarEl.setText(`${statusSymbol} Hijacker`);
+        this.statusBarEl.setText(`${statusSymbol} Synaptic Bridge`);
     }
 
     toggleVisibility(visible: boolean) {

@@ -1,8 +1,12 @@
-# Markdown Hijacker
+# Synaptic Bridge
 
 > Beyond the Vault. One hub for every Markdown, everywhere.
 
-Markdown Hijacker is an Obsidian plugin that synchronizes markdown and any file extensions you specify between your Obsidian Vault and external folders. With this plugin, you can keep your notes and documents in sync across different locations and tools, improving your workflow and flexibility.
+Synaptic Bridge is an Obsidian plugin that synchronizes markdown and any file extensions you specify between your Obsidian Vault and external folders. With this plugin, you can keep your notes and documents in sync across different locations and tools, improving your workflow and flexibility.
+
+## Release Notes
+
+- See the latest and upcoming features in [RELEASE_NOTE.md](./RELEASE_NOTE.md)
 
 ## Key Features
 
@@ -28,26 +32,26 @@ Markdown Hijacker is an Obsidian plugin that synchronizes markdown and any file 
 ## Installation
 
 1. In Obsidian, go to Settings(⚙️) > Community Plugins > Browse
-2. Search for "Markdown Hijacker" and install
+2. Search for "Synaptic Bridge" and install
 3. Enable the plugin
 
 ## Configuration
 
 ### 1. Basic Settings
 
-1. Go to Settings(⚙️) > Community Plugins > Markdown Hijacker settings
+1. Go to Settings(⚙️) > Community Plugins > Synaptic Bridge settings
 2. Toggle "Enable Plugin" to activate all features
 
 ### 2. Initial Settings
 
-<p align="center"><img src="image/01_Initial_Settings.png" width="400" alt="Initial settings screen for Markdown Hijacker"/></p>
+<p align="center"><img src="image/01_Initial_Settings.png" width="400" alt="Initial settings screen for Synaptic Bridge"/></p>
 
 1. **Global Synchronization**: Turn this ON to enable all synchronization features of the plugin, or OFF to disable them globally.
 2. **Sync Connections**: Click the "+" button to add a new sync connection pair.
 
 ### 3. Folder Mapping Setup
 
-<p align="center"><img src="image/02_Add_Sync_Connect.png" width="400" alt="Add new sync connection in Markdown Hijacker"/></p>
+<p align="center"><img src="image/02_Add_Sync_Connect.png" width="400" alt="Add new sync connection in Synaptic Bridge"/></p>
 
 1. Click the "+" button to create a new connection.
 2. Click the title to rename the connection.
@@ -61,7 +65,7 @@ Markdown Hijacker is an Obsidian plugin that synchronizes markdown and any file 
 
 ### 4. Advanced Settings
 
-<p align="center"><img src="image/04_Advanced_Settings.png" width="400" alt="Advanced settings for a sync connection in Markdown Hijacker"/></p>
+<p align="center"><img src="image/04_Advanced_Settings.png" width="400" alt="Advanced settings for a sync connection in Synaptic Bridge"/></p>
 
 1. **Synchronization Direction**:
     - External→Vault: Import external changes to Vault only
@@ -103,10 +107,6 @@ Markdown Hijacker is an Obsidian plugin that synchronizes markdown and any file 
 - Errors may occur if external paths are invalid.
 - Unexpected synchronization conflicts may arise if the same file is modified through different methods.
 - **Disclaimer:** The developer of this plugin is not responsible for any data loss, sync conflicts, or other issues that may arise from its use. Please use at your own risk and make regular backups of important data.
-
-## Release Notes
-
-- See the latest and upcoming features in [RELEASE_NOTE.md](./RELEASE_NOTE.md)
 
 ## License
 

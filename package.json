@@ -1,6 +1,6 @@
 {
-	"name": "markdown-hijacker",
-	"version": "0.1.0",
+	"name": "synaptic-bridge",
+	"version": "0.1.2",
 	"description": "Hijack your markdowns from external folders. Live sync with Obsidian Vault—on your terms.",
 	"main": "main.js",
 	"scripts": {

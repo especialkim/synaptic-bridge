@@ -201,7 +201,233 @@ _**Assistant**_
 
 ---
 
+요청하신 대로 `README.md` 하단, "Developer Information" 섹션 바로 위에 "Release Notes" 섹션과 `RELEASE_NOTE.md` 링크를 추가했습니다.
 
+이제 사용자는 README에서 바로 Release Note로 이동해 최신/예정 기능을 쉽게 확인할 수 있습니다.
+
+더 필요한 사항이 있으면 언제든 말씀해 주세요!
+
+---
+
+_**User**_
+
+@README.md 플러그인 이름을 Markdown Hijacker 에서 Synaptic Bridge 로 변경했어. ReadME를 수정해줘. 
+
+---
+
+_**Assistant**_
+
+작업 순서와 목적을 먼저 안내드리겠습니다.
+
+---
+
+### 작업 목적 및 설명
+
+- **목적:**  
+  플러그인 이름을 기존 "Markdown Hijacker"에서 "Synaptic Bridge"로 변경함에 따라,  
+  README.md 내 모든 관련 텍스트(제목, 본문, 이미지 alt 등)를 새로운 이름으로 일괄 수정합니다.
+
+- **수정 범위:**  
+  1. 문서 최상단의 제목  
+  2. 소개 문구  
+  3. 본문 내 "Markdown Hijacker"가 언급된 모든 부분  
+  4. 이미지 alt, 설정 메뉴 등에서의 플러그인 이름  
+  5. 기타 예시, 설명 등에서의 플러그인 이름
+
+---
+
+### 실제 적용 예시
+
+- `# Markdown Hijacker` → `# Synaptic Bridge`
+- "Markdown Hijacker is an Obsidian plugin..." → "Synaptic Bridge is an Obsidian plugin..."
+- "Markdown Hijacker settings" → "Synaptic Bridge settings"
+- "Add new sync connection in Markdown Hijacker" → "Add new sync connection in Synaptic Bridge"
+- "Initial settings screen for Markdown Hijacker" → "Initial settings screen for Synaptic Bridge"
+- 기타 모든 "Markdown Hijacker" → "Synaptic Bridge"
+
+---
+
+곧 README.md 전체에서 플러그인 이름을 일괄 변경하겠습니다.
+
+---
+
+```diff
+- # Markdown Hijacker
++ # Synaptic Bridge
+  
+  > Beyond the Vault. One hub for every Markdown, everywhere.
+  
+- Markdown Hijacker is an Obsidian plugin that synchronizes markdown and any file extensions you specify between your Obsidian Vault and external folders. With this plugin, you can keep your notes and documents in sync across different locations and tools, improving your workflow and flexibility.
++ Synaptic Bridge is an Obsidian plugin that synchronizes markdown and any file extensions you specify between your Obsidian Vault and external folders. With this plugin, you can keep your notes and documents in sync across different locations and tools, improving your workflow and flexibility.
+  
+  ## Release Notes
+```
+
+```diff
+  
+  1. In Obsidian, go to Settings(⚙️) > Community Plugins > Browse
+- 2. Search for "Markdown Hijacker" and install
++ 2. Search for "Synaptic Bridge" and install
+  3. Enable the plugin
+  
+```
+
+```diff
+  ### 1. Basic Settings
+  
+- 1. Go to Settings(⚙️) > Community Plugins > Markdown Hijacker settings
++ 1. Go to Settings(⚙️) > Community Plugins > Synaptic Bridge settings
+  2. Toggle "Enable Plugin" to activate all features
+  
+  ### 2. Initial Settings
+  
+- <p align="center"><img src="image/01_Initial_Settings.png" width="400" alt="Initial settings screen for Markdown Hijacker"/></p>
++ <p align="center"><img src="image/01_Initial_Settings.png" width="400" alt="Initial settings screen for Synaptic Bridge"/></p>
+  
+  1. **Global Synchronization**: Turn this ON to enable all synchronization features of the plugin, or OFF to disable them globally.
+```
+
+```diff
+  ### 3. Folder Mapping Setup
+  
+- <p align="center"><img src="image/02_Add_Sync_Connect.png" width="400" alt="Add new sync connection in Markdown Hijacker"/></p>
++ <p align="center"><img src="image/02_Add_Sync_Connect.png" width="400" alt="Add new sync connection in Synaptic Bridge"/></p>
+  
+  1. Click the "+" button to create a new connection.
+```
+
+```diff
+  ### 4. Advanced Settings
+  
+- <p align="center"><img src="image/04_Advanced_Settings.png" width="400" alt="Advanced settings for a sync connection in Markdown Hijacker"/></p>
++ <p align="center"><img src="image/04_Advanced_Settings.png" width="400" alt="Advanced settings for a sync connection in Synaptic Bridge"/></p>
+  
+  1. **Synchronization Direction**:
+```
+
+---
+
+README.md 내 모든 "Markdown Hijacker"를 "Synaptic Bridge"로 변경 완료했습니다.
+
+- 제목, 소개, 설치/설정 안내, 이미지 alt, 본문 등 모든 관련 부분이 새 플러그인 이름으로 일관성 있게 수정되었습니다.
+- 이제 문서 전체가 새로운 브랜드에 맞게 반영되어 있습니다.
+
+추가로 변경이 필요한 부분이나, 문서 스타일/표현 관련 요청이 있으면 언제든 말씀해 주세요!
+
+---
+
+_**User**_
+
+여기 새로운 업데이트를 아래 스타일과 맞게 수정해줘
+
+---
+
+_**Assistant**_
+
+아래와 같이 기존 Roadmap 스타일(굵은 제목 + 상세 설명, 영어)과 맞추어 업데이트 항목을 수정해드릴 수 있습니다.
+
+---
+
+**원문:**  
+- **Open Sync Folder 이건 파일 내비게이션(옵시디언의 탐색기)에서 싱크가 된 폴더는 마우스 우클릭 매뉴에 싱크된 폴더를 여는 것 기능을 추가**
+
+---
+
+**수정 예시 (영문, 기존 스타일 맞춤):**
+
+```markdown
+- **Open Synced Folder from File Explorer**
+  Add a context menu option in Obsidian's file explorer to quickly open the external folder linked to a synced folder.
+  - When right-clicking a synced folder in the file explorer, a new menu item will appear.
+  - Selecting this option will open the corresponding external folder in your system's file manager.
+  - Improves workflow by providing fast access to the original sync location outside Obsidian.
+```
+
+---
+
+이렇게 수정하면 기존 Roadmap 항목들과 통일감 있게 정리됩니다.
+
+**이대로 RELEASE_NOTE.md에 반영해드릴까요?**  
+혹시 추가 설명이나 한국어 병기, 위치 조정 등 원하시는 점이 있으면 말씀해 주세요!
+
+---
+
+_**User**_
+
+이것도 영어로 설명 적어줘
+
+---
+
+_**Assistant**_
+
+```diff
+  ## 0.1.2
+  
+- - 플러그인 이름 변경 Markdown Hijacker 에서 Synaptic Bridge로 변경. 사유는 알지?
++ - Plugin renamed: The plugin name has been changed from "Markdown Hijacker" to "Synaptic Bridge" to better reflect its broader vision and branding direction.
+  
+  ## 0.1.1
+```
+
+---
+
+플러그인 이름 변경 내역을 영어로, 그리고 다른 업데이트 노트 스타일에 맞춰 다음과 같이 수정했습니다:
+
+- Plugin renamed: The plugin name has been changed from "Markdown Hijacker" to "Synaptic Bridge" to better reflect its broader vision and branding direction.
+
+이제 RELEASE_NOTE.md의 모든 주요 변경/로드맵 항목이 일관된 영어 스타일로 정리되어 있습니다.
+
+더 필요한 설명이나 추가 요청이 있으면 언제든 말씀해 주세요!
+
+---
+
+_**User**_
+
+여기 package.json 은 변경안해도되나
+
+---
+
+_**Assistant**_
+
+좋은 질문입니다!  
+플러그인 이름을 "Markdown Hijacker"에서 "Synaptic Bridge"로 변경했다면, **package.json의 name, description, keywords 등도 일관성을 위해 변경하는 것이 권장**됩니다.
+
+### 왜 변경해야 할까?
+- **name**: Obsidian 커뮤니티 플러그인 등록, npm 배포, 자동화 배포 등에서 플러그인 식별에 사용됩니다.  
+  (단, 이미 npm에 등록된 이름이라면 충돌을 피해야 하므로, 실제 npm 배포 시에는 사전 확인 필요)
+- **description, keywords**: 검색, 문서화, SEO, 사용자 인식에 영향.
+- **일관성**: 코드, 문서, 배포 정보가 모두 동일한 브랜드/이름을 사용해야 혼동이 없습니다.
+
+---
+
+### 변경 권장 예시
+
+```json
+{
+  "name": "synaptic-bridge",
+  "version": "0.1.0",
+  "description": "Bridge your markdowns and files between Obsidian Vault and external folders. Live sync on your terms.",
+  "keywords": [
+    "obsidian",
+    "markdown",
+    "plugin",
+    "sync",
+    "bridge"
+  ],
+  // ... 이하 동일
+}
+```
+
+---
+
+### 결론
+
+- **공식적으로 이름을 바꾼다면 package.json도 반드시 변경하는 것이 맞습니다.**
+- 단, 이미 배포된 npm 패키지라면 이름 변경 시 주의가 필요합니다(새 패키지로 등록됨).
+- Obsidian 커뮤니티 플러그인 등록용이라면, name/description/keywords 모두 새 이름으로 바꾸는 것이 좋습니다.
+
+**변경 원하시면 바로 적용해드릴까요?**  
+아니면, 추가로 고민되는 점이 있으신가요?
 
 ---
 
