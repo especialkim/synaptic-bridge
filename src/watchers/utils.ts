@@ -4,12 +4,25 @@ import { App, FileSystemAdapter } from "obsidian";
 import * as path from "path";
 import { FolderConnectionSettings } from "src/settings";
 
+// Simple glob pattern matching function
+function matchGlobPattern(filename: string, pattern: string): boolean {
+  // Convert glob pattern to regex
+  const regexPattern = pattern
+    .replace(/\./g, '\\.')
+    .replace(/\*/g, '.*')
+    .replace(/\?/g, '.')
+    .replace(/\[([^\]]+)\]/g, '[$1]');
+  
+  const regex = new RegExp(`^${regexPattern}$`, 'i');
+  return regex.test(filename);
+}
+
 export function ignoreFilter(
   app: App,
   connection: FolderConnectionSettings,
   watchExternal: boolean = true
 ): (fullPath: string, stats: Stats) => boolean {
-  const { externalPath, internalPath, excludeFolders, includeFolders, extensions, ignoreHiddenFiles } = connection;
+  const { externalPath, internalPath, excludeFolders, includeFolders, extensions, ignoreHiddenFiles, includeFileNames, excludeFileNames } = connection;
   
   const internalAbsolutePath = (app.vault.adapter as FileSystemAdapter).getBasePath() + '/' + internalPath;
   const loweredExtensions = extensions.map(e => e.toLowerCase());
@@ -39,8 +52,59 @@ export function ignoreFilter(
       }
     }
 
-    if (stats.isFile() && loweredExtensions.length > 0) {
-      return !loweredExtensions.some(ext => lowerFullPath.endsWith(`.${ext}`));
+    if (stats.isFile()) {
+      // Extension filtering
+      if (loweredExtensions.length > 0) {
+        if (!loweredExtensions.some(ext => lowerFullPath.endsWith(`.${ext}`))) {
+          return true;
+        }
+      }
+
+      // File name pattern filtering
+      const filename = path.basename(fullPath);
+      const includePatterns = includeFileNames || [];
+      const excludePatterns = excludeFileNames || [];
+      
+      // If both arrays are empty, no filename filtering
+      if (includePatterns.length === 0 && excludePatterns.length === 0) {
+        return false;
+      }
+      
+      // Check include patterns first
+      if (includePatterns.length > 0) {
+        const matchesInclude = includePatterns.some(pattern => {
+          // Check for glob patterns (* ? [])
+          if (pattern.includes('*') || pattern.includes('?') || pattern.includes('[')) {
+            return matchGlobPattern(filename, pattern);
+          } else {
+            // Exact match (case insensitive)
+            return filename.toLowerCase() === pattern.toLowerCase();
+          }
+        });
+        
+        // If file doesn't match any include pattern, ignore it
+        if (!matchesInclude) {
+          return true;
+        }
+      }
+      
+      // Check exclude patterns (intersection logic)
+      if (excludePatterns.length > 0) {
+        const matchesExclude = excludePatterns.some(pattern => {
+          // Check for glob patterns (* ? [])
+          if (pattern.includes('*') || pattern.includes('?') || pattern.includes('[')) {
+            return matchGlobPattern(filename, pattern);
+          } else {
+            // Exact match (case insensitive)
+            return filename.toLowerCase() === pattern.toLowerCase();
+          }
+        });
+        
+        // If file matches any exclude pattern, ignore it
+        if (matchesExclude) {
+          return true;
+        }
+      }
     }
 
     return false;

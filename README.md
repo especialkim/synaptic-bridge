@@ -78,6 +78,8 @@ Synaptic Bridge is an Obsidian plugin that synchronizes markdown and any file ex
 4. **Exclude Subfolder Names**: Enter the names of subfolders to exclude from sync, one per line.
 5. **Include Subfolder Names**: Enter the names of subfolders to include for sync. If set, only these subfolders will be synced and Exclude Subfolder Names will be ignored.
 6. **File Extensions**: Enter file extensions to include for sync, one per line.
+7. **Include File Names**: Enter filename patterns to include from external folders, one per line. Use exact filenames (e.g., `meeting.md`) or glob patterns with `*`, `?`, `[]` wildcards (e.g., `todo-*.txt`, `project-??.md`).
+8. **Exclude File Names**: Enter filename patterns to exclude from external folders, one per line. Use exact filenames (e.g., `temp.txt`) or glob patterns with `*`, `?`, `[]` wildcards (e.g., `draft-*`, `*.backup`).
 
 > **Note:** When you change any option in Advanced Settings, the corresponding sync will be automatically disabled. Please update all desired settings, then re-enable the mapping to apply changes and resume synchronization.
 
@@ -98,7 +100,8 @@ Synaptic Bridge is an Obsidian plugin that synchronizes markdown and any file ex
     - This information allows you to verify the original location and synchronization status of files.
 
 5. **Make Good Use of Filtering Options**:
-    - Filtering options help you limit synchronization to only the files and folders you need. Use include/exclude and extension filters to optimize performance and avoid unnecessary syncs.
+    - Filtering options help you limit synchronization to only the files and folders you need. Use include/exclude subfolder, extension, and filename filters to optimize performance and avoid unnecessary syncs.
+    - **File name filtering** applies only to "External to Vault" and "Bidirectional" sync types, allowing selective import from external folders while maintaining full export from Vault.
 
 ## Important Notes
 

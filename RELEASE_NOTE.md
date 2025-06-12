@@ -1,5 +1,13 @@
 # Release Notes
 
+## 0.1.3
+
+- **File name filtering for external folder**: Added glob pattern support for including/excluding specific files from external folders
+  - Support for exact filename matching (e.g., `meeting.md`, `config.json`)
+  - Support for glob patterns using `*`, `?`, and `[]` wildcards (e.g., `todo-*.txt`, `project-??.md`, `daily-[0-9][0-9].md`)
+  - Include and exclude filters work together as intersection (files must match include patterns AND not match exclude patterns)
+  - Applies to "External to Vault" and "Bidirectional" sync types
+
 ## 0.1.2
 
 - Plugin renamed: The plugin name has been changed from "Markdown Hijacker" to "Synaptic Bridge" to better reflect its broader vision and branding direction.
@@ -13,6 +21,13 @@
 - See [README.md](./README.md) for plugin overview and usage instructions. 
 
 # Future Roadmap
+
+- **Import Non-Markdown Files as Markdown with Metadata**
+  Convert non-markdown files into markdown format with automatic frontmatter generation.
+  - For text-based files (e.g., `.txt`, `.csv`, `.rtf`), directly embed the file content into the markdown body.
+  - For other file types (images, PDFs, binaries), provide file descriptions with preview thumbnails when possible, or fallback to direct links.
+  - Users can choose to either import files into the vault or keep them in their original location and reference them via links.
+  - Maintains file metadata and source path information in frontmatter for easy tracking and management.
 
 - **Open Synced Folder from File Explorer**
   Add a context menu option in Obsidian's file explorer to quickly open the external folder linked to a synced folder.

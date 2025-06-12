@@ -54,6 +54,8 @@ export const DEFAULT_CONNECTIONS : FolderConnectionSettings = {
 	],
 	includeFolders: [],
 	extensions: ['md'],
+	includeFileNames: [],
+	excludeFileNames: [],
 	syncEnabled: false
 }
 
@@ -350,6 +352,40 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 								.map(ext => ext.trim().replace(/^\./, ''))
 								.map(ext => ext.toLowerCase())
 								.filter(ext => ext !== '');
+							await saveSettings(this.plugin);
+						});
+				});
+			
+			new Setting(advancedContent)
+				.setName('Include file names')
+				.setDesc('Files to include in sync (one per line). Use exact filename with extension for exact match, or glob patterns (* ? []) for pattern matching. Note: This filter only applies to external folder → vault sync.')
+				.addTextArea(textarea => {
+					textarea
+						.setValue((connection.includeFileNames || []).join('\n'))
+						.setPlaceholder('meeting.md\ntodo-*.txt\nproject-??.md\n*.csv\ndaily-[0-9][0-9].md')
+						.onChange(async (value) => {
+							disableSync(connection, syncToggleComponent);
+							connection.includeFileNames = value
+								.split('\n')
+								.map(pattern => pattern.trim())
+								.filter(pattern => pattern !== '');
+							await saveSettings(this.plugin);
+						});
+				});
+			
+			new Setting(advancedContent)
+				.setName('Exclude file names')
+				.setDesc('Files to exclude from sync (one per line). Use exact filename with extension for exact match, or glob patterns (* ? []) for pattern matching. Note: This filter only applies to external folder → vault sync.')
+				.addTextArea(textarea => {
+					textarea
+						.setValue((connection.excludeFileNames || []).join('\n'))
+						.setPlaceholder('temp.txt\ndraft-*\n*.backup\n.DS_Store\nconfig.json')
+						.onChange(async (value) => {
+							disableSync(connection, syncToggleComponent);
+							connection.excludeFileNames = value
+								.split('\n')
+								.map(pattern => pattern.trim())
+								.filter(pattern => pattern !== '');
 							await saveSettings(this.plugin);
 						});
 				});

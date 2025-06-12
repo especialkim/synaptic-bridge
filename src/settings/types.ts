@@ -29,6 +29,8 @@ export interface FolderConnectionSettings {
 	includeFolders: string[];       // 포함할 폴더 목록 (선택 시 제외 목록 무시)
 	extensions: string[];           // 대상 확장자 목록 (예: .md, .txt)
 	syncEnabled: boolean;           // 이 매핑의 동기화 활성화 여부
+	includeFileNames: string[];     // 포함할 파일 목록 (선택 시 제외 목록 무시)
+	excludeFileNames: string[];     // 제외할 파일 목록 (이름 기준)
 };
 
 // 전체 플러그인 설정
