@@ -82,9 +82,37 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.enableGlobalSync)
 				.onChange(async (value) => {
+					console.log(`[SettingUI] ========== Global Sync Toggle ==========`);
+					console.log(`[SettingUI] New value: ${value}`);
 					this.plugin.settings.enableGlobalSync = value;
-					await saveSettings(this.plugin);
+					await this.plugin.saveData(this.plugin.settings); // 이벤트 발생 없이 저장
+					console.log(`[SettingUI] Settings saved`);
 					this.plugin.statusBar.update();
+					
+					// Global sync 토글 시 watcher 즉시 재시작
+					if (value === true) {
+						console.log(`[SettingUI] Starting watchers...`);
+						new Notice('Starting synchronization...');
+						if (this.plugin.externalWatcher) {
+							this.plugin.externalWatcher.setupWatcher();
+						}
+						if (this.plugin.internalWatcher) {
+							this.plugin.internalWatcher.setupWatcher();
+						}
+						console.log(`[SettingUI] Watchers started`);
+					} else {
+						console.log(`[SettingUI] Stopping watchers...`);
+						new Notice('Synchronization stopped');
+						// Global sync OFF 시 모든 watcher 정지 (비동기로 즉시 종료)
+						if (this.plugin.externalWatcher) {
+							this.plugin.externalWatcher.stopWatching(true);
+						}
+						if (this.plugin.internalWatcher) {
+							this.plugin.internalWatcher.clearEvents();
+						}
+						console.log(`[SettingUI] Watchers stopped`);
+					}
+					console.log(`[SettingUI] ========== Global Sync Toggle END ==========`);
 				}));
 
 		// new Setting(globalSection)
@@ -167,13 +195,37 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 									await saveSettings(this.plugin);
 									return;
 								}
+								
+								// Sync를 켤 때 watcher 즉시 재시작
+								connection.syncEnabled = value;
+								await this.plugin.saveData(this.plugin.settings); // 이벤트 발생 없이 저장
+								
+								new Notice('Starting sync for this connection...');
+								
+								// Watcher 즉시 재시작
+								if (this.plugin.externalWatcher) {
+									this.plugin.externalWatcher.setupWatcher();
+								}
+								if (this.plugin.internalWatcher) {
+									this.plugin.internalWatcher.setupWatcher();
+								}
+							} else {
+								// Sync를 끌 때는 저장하고 watcher 즉시 재시작
+								connection.syncEnabled = value;
+								await this.plugin.saveData(this.plugin.settings); // 이벤트 발생 없이 저장
+								
+								new Notice('Stopping sync for this connection...');
+								
+								// Watcher 즉시 재시작 (해당 connection 제외)
+								if (this.plugin.externalWatcher) {
+									this.plugin.externalWatcher.setupWatcher();
+								}
+								if (this.plugin.internalWatcher) {
+									this.plugin.internalWatcher.setupWatcher();
+								}
 							}
-							connection.syncEnabled = value;
-							await saveSettings(this.plugin);
-						})
-						return;
-					}	
-				);
+						});
+				});
 
 			/* Item Body */
 			const itemBody = connectionItem.createDiv({ cls: 'sync-connection-body' });

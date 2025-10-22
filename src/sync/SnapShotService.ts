@@ -1,5 +1,5 @@
 import MarkdownHijacker from "main";
-import { App, FileSystemAdapter } from "obsidian";
+import { App, FileSystemAdapter, TFile, TFolder } from "obsidian";
 import { SyncType, BidirectionalType, DeletedFileAction, FolderConnectionSettings,  } from "../settings/types";
 import * as fs from "fs";
 import * as pathModule from "path";
@@ -127,40 +127,53 @@ export class SnapShotService {
         };
     }
 
-    public getCurrentStateSnapShotOfInternalRoot(connection: FolderConnectionSettings): Promise<SnapshotFile[]> {
-        return new Promise((resolve) => {
-            const internalRoot = connection.internalPath;
-            const adapter = this.app.vault.adapter as FileSystemAdapter;
-            const obsidianBasePath = adapter.getBasePath();
-            const internalAbsolutePath = obsidianBasePath + '/' + internalRoot;
-            let watcher: FSWatcher;
-    
-            watcher = chokidar.watch(internalAbsolutePath, {
-                ignored: ignoreFilter(this.app, connection, false),
-                ignoreInitial: true,
-                persistent: true,
-                awaitWriteFinish: {
-                  stabilityThreshold: 300,
-                  pollInterval: 100
+    public async getCurrentStateSnapShotOfInternalRoot(connection: FolderConnectionSettings): Promise<SnapshotFile[]> {
+        console.log('[SnapShotService] getCurrentStateSnapShotOfInternalRoot - using Obsidian Vault API');
+        const startTime = performance.now();
+        
+        const internalRoot = connection.internalPath;
+        const folder = this.app.vault.getFolderByPath(internalRoot);
+        
+        if (!folder) {
+            console.log('[SnapShotService] Internal folder not found:', internalRoot);
+            return [];
+        }
+        
+        const snapshots: SnapshotFile[] = [];
+        const validExts = connection.extensions.map(e => e.replace(/^\./, '').toLowerCase());
+        
+        // 재귀적으로 파일 수집 (Obsidian Vault API 사용)
+        const collectFiles = (currentFolder: TFolder) => {
+            for (const child of currentFolder.children) {
+                // 파일명 필터링 (❌ 제외)
+                if (child.name.includes('❌ ')) continue;
+                
+                if (child instanceof TFile) {
+                    // TFile인 경우
+                    const ext = child.extension?.toLowerCase();
+                    if (!ext || !validExts.includes(ext)) continue;
+                    
+                    // 스냅샷 생성
+                    try {
+                        const snapshot = this.getCurrentStateSnapshot(connection, child.path);
+                        snapshots.push(snapshot);
+                    } catch (error) {
+                        console.warn('[SnapShotService] Failed to create snapshot for:', child.path, error);
+                    }
+                } else if (child instanceof TFolder) {
+                    // TFolder인 경우 - 재귀 호출
+                    collectFiles(child);
                 }
-            });
-    
-            watcher.on('ready', () => {
-                const paths = getAllWatchedPaths(watcher)
-                    .filter(path => !path.includes('❌ '))
-                    .filter(path => {
-                        try {
-                            return fs.statSync(path).isFile();
-                        } catch (e) {
-                            return false;
-                        }
-                    })
-                    .map(path => path.replace(obsidianBasePath + '/', ''));
-                const snapShotDatas = paths.map(path => this.getCurrentStateSnapshot(connection, path));
-                watcher.close();
-                resolve(snapShotDatas); // Promise를 통해 반환
-            });
-        });
+            }
+        };
+        
+        collectFiles(folder);
+        
+        const endTime = performance.now();
+        const duration = (endTime - startTime).toFixed(2);
+        console.log(`[SnapShotService] Collected ${snapshots.length} files in ${duration}ms using Vault API (was taking ~19sec with chokidar)`);
+        
+        return snapshots;
     }
 
     public async removeSnapShots(connection: FolderConnectionSettings, paths: string[]){

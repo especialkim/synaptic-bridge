@@ -28,6 +28,10 @@ export class StatusBarManager {
         this.statusBarEl.setText(`${statusSymbol} Synaptic Bridge`);
     }
 
+    setText(text: string) {
+        this.statusBarEl.setText(text);
+    }
+
     toggleVisibility(visible: boolean) {
         this.statusBarEl.style.display = visible ? "" : "none";
     }

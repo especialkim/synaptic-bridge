@@ -51,7 +51,14 @@ export default class MarkdownHijacker extends Plugin {
 
 	explorerSyncDecorator: ExplorerSyncDecorator;
 
+	// Debounce 타이머
+	private settingsChangeDebounceTimer: NodeJS.Timeout | null = null;
+	
+	// onLayoutReady 콜백 참조 (cleanup을 위해)
+	private layoutReadyUnsubscribe: (() => void) | null = null;
+
 	async onload() {
+		console.log('[MarkdownHijacker] ========== onload START ==========');
 		
 		/* Load Settings */
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
@@ -70,49 +77,155 @@ export default class MarkdownHijacker extends Plugin {
 		this.statusBar = new StatusBarManager(this);
 		this.statusBar.toggleVisibility(this.settings.showStatusBar);
 
-		/* Main */
-		this.app.workspace.onLayoutReady(() => {
-			this.externalWatcher = new ExternalWatcher(this.app, this);
-			this.externalWatcher.setupWatcher();
-			this.internalWatcher = new InternalWatcher(this.app, this);
-			this.internalWatcher.setupWatcher();
+		/* Main - 지연 초기화 적용 */
+		// onLayoutReady는 한 번만 실행되어야 함
+		const layoutReadyCallback = () => {
+			console.log('[MarkdownHijacker] Layout ready - starting initialization');
+			
+			// Explorer decorator는 즉시 초기화 (가벼운 작업)
 			this.explorerSyncDecorator = new ExplorerSyncDecorator(this.app, this);
 			this.explorerSyncDecorator.setup();
-		});
+			console.log('[MarkdownHijacker] Explorer decorator setup complete');
+			
+			// 유휴 시간에 초기화 (브라우저가 여유 있을 때)
+			this.scheduleIdleInitialization();
+		};
 		
-		/* 설정 변경 이벤트 리스너 등록 */
+		// 이미 layout이 준비된 경우 즉시 실행
+		if (this.app.workspace.layoutReady) {
+			console.log('[MarkdownHijacker] Layout already ready, initializing immediately');
+			layoutReadyCallback();
+		} else {
+			console.log('[MarkdownHijacker] Waiting for layout ready');
+			this.app.workspace.onLayoutReady(layoutReadyCallback);
+		}
+		
+		console.log('[MarkdownHijacker] ========== onload END ==========');
+		
+		/* 설정 변경 이벤트 리스너 등록 (Debounce 적용) */
 		this.registerEvent(
 			this.app.workspace.on('markdown-hijacker:settings-changed', () => {
-				if (this.externalWatcher) {
-					this.externalWatcher.setupWatcher();
+				console.log('[MarkdownHijacker] Settings changed - debouncing...');
+				
+				// 기존 타이머 취소
+				if (this.settingsChangeDebounceTimer) {
+					clearTimeout(this.settingsChangeDebounceTimer);
 				}
-				if (this.internalWatcher) {
-					this.internalWatcher.setupWatcher();
-				}
-
-				if (this.explorerSyncDecorator) {
-					this.explorerSyncDecorator.decorateAllSyncFolders();
-				}
-				if (this.statusBar) {
-					this.statusBar.toggleVisibility(this.settings.showStatusBar);
-				}
+				
+				// 1초 후에 실행 (연속 입력 방지)
+				this.settingsChangeDebounceTimer = setTimeout(() => {
+					console.log('[MarkdownHijacker] Applying settings changes...');
+					this.applySettingsChanges();
+				}, 1000);
 			})
 		);
 	}
 
-	onunload() {
+	private applySettingsChanges() {
+		console.log('[MarkdownHijacker] Applying settings changes now');
+		const applyStart = performance.now();
 		
-		// Make sure to stop the watcher when the plugin is unloaded
-		if (this.externalWatcher) {
-			this.externalWatcher.stopWatching();
+		// Status Bar 업데이트 (가벼운 작업)
+		if (this.statusBar) {
+			this.statusBar.update();
+			this.statusBar.toggleVisibility(this.settings.showStatusBar);
 		}
+		
+		// Explorer decorator 업데이트 (가벼운 작업)
+		if (this.explorerSyncDecorator) {
+			this.explorerSyncDecorator.decorateAllSyncFolders();
+		}
+		
+		// Watcher 재설정은 하지 않음 - 설정 UI에서 connection을 활성화/비활성화할 때만 수동으로 처리
+		// 이유: setupWatcher()가 5초 정도 걸려서 설정 UI가 버벅임
+		// 대신 플러그인 재로드하거나 Obsidian 재시작 시 적용됨
+		
+		const applyTime = (performance.now() - applyStart).toFixed(2);
+		console.log(`[MarkdownHijacker] Settings applied in ${applyTime}ms (watchers not restarted)`);
+	}
 
+	private scheduleIdleInitialization() {
+		// requestIdleCallback이 있으면 사용, 없으면 setTimeout으로 폴백
+		if (typeof requestIdleCallback !== 'undefined') {
+			console.log('[MarkdownHijacker] Using requestIdleCallback for initialization');
+			requestIdleCallback(() => {
+				this.initializeSync();
+			}, { timeout: 5000 }); // 최대 5초 후에는 강제 실행
+		} else {
+			console.log('[MarkdownHijacker] Using setTimeout for initialization (2s delay)');
+			setTimeout(() => {
+				this.initializeSync();
+			}, 2000); // 폴백: 2초 지연
+		}
+	}
+
+	private async initializeSync() {
+		if (!this.settings.enableGlobalSync) {
+			console.log('[MarkdownHijacker] Global sync disabled, skipping initialization');
+			return;
+		}
+		
+		console.log('[MarkdownHijacker] Starting sync initialization...');
+		const startTime = performance.now();
+		
+		// Status Bar 피드백: 초기화 시작
+		console.log('[MarkdownHijacker] Setting status bar: Initializing...');
+		this.statusBar?.setText("🔄 Initializing sync...");
+		
+		try {
+			console.log('[MarkdownHijacker] Creating ExternalWatcher...');
+			this.externalWatcher = new ExternalWatcher(this.app, this);
+			
+			console.log('[MarkdownHijacker] Setting up ExternalWatcher...');
+			this.externalWatcher.setupWatcher();
+			console.log('[MarkdownHijacker] ExternalWatcher setup complete');
+			
+			console.log('[MarkdownHijacker] Creating InternalWatcher...');
+			this.internalWatcher = new InternalWatcher(this.app, this);
+			
+			console.log('[MarkdownHijacker] Setting up InternalWatcher...');
+			this.internalWatcher.setupWatcher();
+			console.log('[MarkdownHijacker] InternalWatcher setup complete');
+			
+			const endTime = performance.now();
+			const duration = (endTime - startTime).toFixed(2);
+			console.log(`[MarkdownHijacker] Sync initialization completed in ${duration}ms`);
+			
+			// Status Bar 피드백: 초기화 완료
+			console.log('[MarkdownHijacker] Setting status bar: Sync ready');
+			this.statusBar?.setText("✅ Sync ready");
+			console.log('[MarkdownHijacker] ========== initializeSync COMPLETE ==========');
+		} catch (error) {
+			console.error('[MarkdownHijacker] Failed to initialize sync:', error);
+			console.log('[MarkdownHijacker] Setting status bar: Error');
+			this.statusBar?.setText("❌ Sync error");
+		}
+	}
+
+	onunload() {
+		console.log('[MarkdownHijacker] ========== onunload START ==========');
+		
+		// Debounce 타이머 정리
+		if (this.settingsChangeDebounceTimer) {
+			clearTimeout(this.settingsChangeDebounceTimer);
+			this.settingsChangeDebounceTimer = null;
+		}
+		
+		// Watchers 즉시 detach
+		if (this.externalWatcher) {
+			this.externalWatcher.stopWatching(true);
+			this.externalWatcher = null as any;
+		}
 		if (this.internalWatcher) {
 			this.internalWatcher.clearEvents();
+			this.internalWatcher = null as any;
 		}
-
+		
+		// Explorer decorator 정리
 		if (this.explorerSyncDecorator) {
-			this.explorerSyncDecorator.cleanup();
+			this.explorerSyncDecorator = null as any;
 		}
+		
+		console.log('[MarkdownHijacker] ========== onunload END ==========');
 	}
 }

@@ -97,12 +97,29 @@ export class SyncManager {
     }
 
     public async initBidirectional(paths: string[]) {
+        console.log('[SyncManager] initBidirectional started');
+        const totalStart = performance.now();
+        
         // 1. 외부의 현재 상태
+        console.log(`[SyncManager] Creating ${paths.length} external snapshots...`);
+        const externalStart = performance.now();
         const existingExternalSnapShots = paths.map(path => this.plugin.snapShotService.getCurrentStateSnapshot(this.connection, path));
+        const externalTime = (performance.now() - externalStart).toFixed(2);
+        console.log(`[SyncManager] External snapshots created in ${externalTime}ms`);
+        
         // 2. 내부의 현재 상태 (비동기)
+        console.log('[SyncManager] Getting internal snapshots...');
+        const internalStart = performance.now();
         const existingInternalSnapShots = await this.plugin.snapShotService.getCurrentStateSnapShotOfInternalRoot(this.connection);
+        const internalTime = (performance.now() - internalStart).toFixed(2);
+        console.log(`[SyncManager] Internal snapshots retrieved (${existingInternalSnapShots.length} files) in ${internalTime}ms`);
+        
         // 3. 과거 스냅샷
+        console.log('[SyncManager] Loading past snapshots...');
+        const pastStart = performance.now();
         const snapShots = this.plugin.snapShotService.loadSnapshot(this.connection).linkedFiles;
+        const pastTime = (performance.now() - pastStart).toFixed(2);
+        console.log(`[SyncManager] Past snapshots loaded (${snapShots.length} files) in ${pastTime}ms`);
     
         // Map 생성 (relativePath 기준)
         const externalMap = new Map(existingExternalSnapShots.map(s => [s.relativePath, s]));
@@ -163,35 +180,58 @@ export class SyncManager {
             }
         }
     
+        console.log(`[SyncManager] Analysis complete - toAddToExternal: ${toAddToExternal.length}, toAddToInternal: ${toAddToInternal.length}, toUpdateExternal: ${toUpdateExternal.length}, toUpdateInternal: ${toUpdateInternal.length}`);
+        
         // 실제 동기화 처리 (예시)
+        const syncStart = performance.now();
+        
         if (toAddToExternal.length > 0) {
-            // 내부에서 외부로 추가
+            console.log(`[SyncManager] Adding ${toAddToExternal.length} files to external...`);
+            const start = performance.now();
             await this.plugin.syncInternalManager.handleAddFiles(toAddToExternal.map(s => this.plugin.syncService.getInternalPath(s, this.connection)), this.connection);
+            console.log(`[SyncManager] Added to external in ${(performance.now() - start).toFixed(2)}ms`);
         }
         if (toAddToInternal.length > 0) {
-            // 외부에서 내부로 추가
+            console.log(`[SyncManager] Adding ${toAddToInternal.length} files to internal...`);
+            const start = performance.now();
             await this.syncExternalManager.handleAddFiles(toAddToInternal.map(s => this.plugin.syncService.getExternalPath(s, this.connection)));
+            console.log(`[SyncManager] Added to internal in ${(performance.now() - start).toFixed(2)}ms`);
         }
         if (toUpdateExternal.length > 0) {
-            // 내부에서 외부로 업데이트
+            console.log(`[SyncManager] Updating ${toUpdateExternal.length} external files...`);
+            const start = performance.now();
             await this.plugin.syncInternalManager.handleChangeFiles(toUpdateExternal.map(s => this.plugin.syncService.getInternalPath(s, this.connection)), this.connection);
+            console.log(`[SyncManager] Updated external in ${(performance.now() - start).toFixed(2)}ms`);
         }
         if (toUpdateInternal.length > 0) {
-            // 외부에서 내부로 업데이트
+            console.log(`[SyncManager] Updating ${toUpdateInternal.length} internal files...`);
+            const start = performance.now();
             await this.syncExternalManager.handleChangeFiles(toUpdateInternal.map(s => this.plugin.syncService.getExternalPath(s, this.connection)));
+            console.log(`[SyncManager] Updated internal in ${(performance.now() - start).toFixed(2)}ms`);
         }
         if (toDeleteExternal.length > 0) {
-            // 외부에 없고 내부에 있음 -> 외부에서 삭제 이벤트
+            console.log(`[SyncManager] Deleting ${toDeleteExternal.length} external files...`);
+            const start = performance.now();
             await this.syncExternalManager.handleDeleteFiles(toDeleteExternal.map(s => this.plugin.syncService.getExternalPath(s, this.connection)));
+            console.log(`[SyncManager] Deleted from external in ${(performance.now() - start).toFixed(2)}ms`);
         }
         if (toDeleteInternal.length > 0) {
-            // 내부에 없고 외부에 있음 -> 내부에서 삭제 이벤트
+            console.log(`[SyncManager] Deleting ${toDeleteInternal.length} internal files...`);
+            const start = performance.now();
             await this.plugin.syncInternalManager.handleDeleteFiles(toDeleteInternal.map(s => this.plugin.syncService.getInternalPath(s, this.connection)), this.connection);
+            console.log(`[SyncManager] Deleted from internal in ${(performance.now() - start).toFixed(2)}ms`);
         }
         if (toDeleteBoth.length > 0) {
-            // 양쪽 모두 없는 경우: snapshot에서만 정리
+            console.log(`[SyncManager] Cleaning up ${toDeleteBoth.length} snapshots...`);
+            const start = performance.now();
             await this.plugin.snapShotService.removeSnapShots(this.connection, toDeleteBoth);
+            console.log(`[SyncManager] Cleaned up in ${(performance.now() - start).toFixed(2)}ms`);
         }
+        
+        const syncTime = (performance.now() - syncStart).toFixed(2);
+        const totalTime = (performance.now() - totalStart).toFixed(2);
+        console.log(`[SyncManager] Total sync operations completed in ${syncTime}ms`);
+        console.log(`[SyncManager] initBidirectional completed in ${totalTime}ms`);
     }
 
 }

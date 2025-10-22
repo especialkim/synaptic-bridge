@@ -1,0 +1,35 @@
+# Development files - Obsidian should ignore these
+node_modules/
+src/
+Notes/
+test/
+image/
+
+# Source files
+*.ts
+tsconfig.json
+package.json
+package-lock.json
+esbuild.config.mjs
+version-bump.mjs
+
+# Version control
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# Build artifacts
+*.map
+
+# Documentation (README는 남겨도 됨, 나머지는 제외)
+RELEASE_NOTE.md
+LICENSE
+
+# Misc
+.DS_Store
+.specstory/
+

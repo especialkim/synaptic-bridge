@@ -11,6 +11,18 @@ if you want to view the source, please visit the github repository of this plugi
 
 const prod = (process.argv[2] === "production");
 
+// console.log 제거 플러그인 (프로덕션만)
+const dropConsolePlugin = {
+	name: 'drop-console',
+	setup(build) {
+		if (prod) {
+			build.onEnd(() => {
+				console.log('Production build: console.log removed');
+			});
+		}
+	}
+};
+
 const context = await esbuild.context({
 	banner: {
 		js: banner,
@@ -40,6 +52,9 @@ const context = await esbuild.context({
 	outfile: "main.js",
 	minify: prod,
 	platform: 'node',
+	drop: prod ? ['console', 'debugger'] : [],  // 디버깅을 위해 일시적으로 비활성화
+	// drop: [],  // console.log 유지
+	plugins: [dropConsolePlugin],
 });
 
 if (prod) {
