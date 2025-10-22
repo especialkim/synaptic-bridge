@@ -1,5 +1,17 @@
 # Release Notes
 
+## 0.1.4
+
+- **Performance optimization**: Significantly improved plugin loading and shutdown performance
+  - Eliminated startup stuttering and UI freezing during plugin initialization
+  - Fixed settings change freezing issues for smooth configuration updates
+  - Optimized plugin shutdown for instant response when disabling the plugin
+  - Improved internal file scanning performance using Obsidian Vault API
+  - Added delayed loading with requestIdleCallback for non-blocking initialization
+  - Implemented immediate watcher detachment without blocking operations
+  - Added .obsidianignore to exclude development files from Obsidian indexing
+  - Added console.log removal in production builds for better performance
+
 ## 0.1.3
 
 - **File name filtering for external folder**: Added glob pattern support for including/excluding specific files from external folders
