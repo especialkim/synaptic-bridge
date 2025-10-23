@@ -9,6 +9,7 @@ import { SnapShotService } from 'src/sync/SnapShotService';
 import { SyncService } from 'src/sync/SyncService';
 import { SyncInternalManager } from 'src/sync/SyncInternalManager';
 import { ExplorerSyncDecorator } from 'src/explorer/ExplorerSyncDecorator';
+import { ExplorerContextMenu } from 'src/explorer/ExplorerContextMenu';
 
 // 이벤트 타입 확장
 declare module 'obsidian' {
@@ -49,7 +50,9 @@ export default class MarkdownHijacker extends Plugin {
 	/* Internal Sync Manager */
 	syncInternalManager: SyncInternalManager;
 
+	/* Explorer UI */
 	explorerSyncDecorator: ExplorerSyncDecorator;
+	explorerContextMenu: ExplorerContextMenu;
 
 	// Debounce 타이머
 	private settingsChangeDebounceTimer: NodeJS.Timeout | null = null;
@@ -86,6 +89,11 @@ export default class MarkdownHijacker extends Plugin {
 			this.explorerSyncDecorator = new ExplorerSyncDecorator(this.app, this);
 			this.explorerSyncDecorator.setup();
 			console.log('[MarkdownHijacker] Explorer decorator setup complete');
+			
+			// Explorer context menu 초기화 (가벼운 작업)
+			this.explorerContextMenu = new ExplorerContextMenu(this.app, this);
+			this.explorerContextMenu.setup();
+			console.log('[MarkdownHijacker] Explorer context menu setup complete');
 			
 			// 유휴 시간에 초기화 (브라우저가 여유 있을 때)
 			this.scheduleIdleInitialization();
@@ -221,9 +229,14 @@ export default class MarkdownHijacker extends Plugin {
 			this.internalWatcher = null as any;
 		}
 		
-		// Explorer decorator 정리
+		// Explorer UI 정리
 		if (this.explorerSyncDecorator) {
+			this.explorerSyncDecorator.cleanup();
 			this.explorerSyncDecorator = null as any;
+		}
+		if (this.explorerContextMenu) {
+			this.explorerContextMenu.cleanup();
+			this.explorerContextMenu = null as any;
 		}
 		
 		console.log('[MarkdownHijacker] ========== onunload END ==========');

@@ -1,5 +1,17 @@
 # Release Notes
 
+## 0.1.5
+
+- **Enhanced Explorer Integration**: Improved visual indicators and quick access for synced folders
+  - Changed circular badge to connection name badge for synced folders in file explorer
+  - Click badge to open external folder in system file manager (Finder/Explorer)
+  - Added right-click context menu for synced folders with options:
+    - Rename Connection
+    - Open Synced Folder in Finder/Explorer
+    - Copy External Path
+    - Open Synaptic Bridge Settings
+  - Refactored duplicate code for better maintainability
+
 ## 0.1.4
 
 - **Performance optimization**: Significantly improved plugin loading and shutdown performance

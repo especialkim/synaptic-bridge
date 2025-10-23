@@ -3,6 +3,16 @@
   font-size: var(--h2-size);
 }
 
+/* Context Menu - Synaptic Bridge Header */
+.menu-item[aria-disabled="true"] .menu-item-title:has-text("Synaptic Bridge") {
+  font-weight: bold;
+}
+
+/* Alternative: 모든 비활성화된 메뉴 아이템 중 "Synaptic Bridge" 텍스트를 가진 것 */
+.menu .menu-item[aria-disabled="true"]:has(.lucide-zap) {
+  font-weight: bold;
+}
+
 .markdown-hijacker-modal button,
 .markdown-hijacker-settings input[type="checkbox"],
 .markdown-hijacker-settings .checkbox-container,
@@ -177,11 +187,23 @@
 /* Explorer Sync Decorator */
 .sync-folder-badge {
   display: inline-flex;
+  align-items: center;
   vertical-align: middle;
-  margin-left: 6px; /* 이미 있음 */
+  margin-left: 6px;
+  padding: 2px 6px;
+  background-color: var(--color-accent);
+  color: var(--text-on-accent);
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.sync-folder-badge-svg {
-  vertical-align: middle;
+
+.sync-folder-badge:hover {
+  opacity: 0.8;
 }
 
 /* Markdown Hijacker Settings */
