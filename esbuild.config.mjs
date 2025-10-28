@@ -52,8 +52,8 @@ const context = await esbuild.context({
 	outfile: "main.js",
 	minify: prod,
 	platform: 'node',
-	// drop: prod ? ['console', 'debugger'] : [],  // 디버깅을 위해 일시적으로 비활성화
-	drop: [],  // console.log 유지
+	drop: prod ? ['console', 'debugger'] : [],  // 디버깅을 위해 일시적으로 비활성화
+	// drop: [],  // console.log 유지
 	plugins: [dropConsolePlugin],
 });
 

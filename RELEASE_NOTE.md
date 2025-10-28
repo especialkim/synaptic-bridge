@@ -55,20 +55,6 @@
   - One-click access to connection settings and sync logs
   - Enables quick overview and management of all sync pairs without opening settings
 
-- **Collect from Source Points**  
-  Allow users to gather `.md` files from multiple external folders (Source Points) into a designated folder inside the Obsidian vault.  
-  - Users can define multiple Source Points in the plugin settings (e.g., notion-export, blog-drafts, code-snippets).  
-  - The action can be triggered manually via command palette or run periodically (e.g., on startup or scheduled sync).  
-  - Files are copied or linked into a single target folder within the vault (e.g., `Collected/Inbox`).  
-  - Enables workflows such as centralized capture, unified processing, and external-to-internal syncing.
-
-- **Send to Drop Point**
-  Allow users to send any file from anywhere in the Obsidian vault to a designated external folder (Drop Point).
-  - Users can define multiple Drop Points in the plugin settings (e.g., blog-inbox, archive, AI-processing).
-  - The action can be triggered via command palette or context menu.
-  - File structure inside Obsidian does not need to match the target Drop Point folder.
-  - Enables flexible workflows such as centralized inboxes, external pipelines, and task queues.
-
 - **Post Processing Hooks**
   Allow users to define post-processing commands that run after a sync operation.
   - Users can configure named post-process profiles (e.g., `deploy`, `optimize`, `notify`) in plugin settings.
@@ -76,25 +62,12 @@
   - Commands may include shell scripts, external tool invocations, or integration with git (e.g., commit & push).
   - Enables flexible automation after syncing, such as publishing to a blog, generating RSS, or image compression.
 
-- **Enhanced Sync Connection Management**
-  Add warning alerts and confirmation dialogs when modifying or deleting synchronized folder connections.
-  - Display confirmation prompt when renaming sync connection names
-  - Show warning dialog when deleting sync connections with details about affected files
-  - Provide option to backup or preserve synced files before connection removal
-  - Prevent accidental modifications that could disrupt active synchronization
-
 - **Import Non-Markdown Files as Markdown with Metadata**
   Convert non-markdown files into markdown format with automatic frontmatter generation.
   - For text-based files (e.g., `.txt`, `.csv`, `.rtf`), directly embed the file content into the markdown body.
   - For other file types (images, PDFs, binaries), provide file descriptions with preview thumbnails when possible, or fallback to direct links.
   - Users can choose to either import files into the vault or keep them in their original location and reference them via links.
   - Maintains file metadata and source path information in frontmatter for easy tracking and management.
-
-- **Open Synced Folder from File Explorer**
-  Add a context menu option in Obsidian's file explorer to quickly open the external folder linked to a synced folder.
-  - When right-clicking a synced folder in the file explorer, a new menu item will appear.
-  - Selecting this option will open the corresponding external folder in your system's file manager.
-  - Improves workflow by providing fast access to the original sync location outside Obsidian.
 
 - **Customizable Sync File Frontmatter (YAML)**
   Allow users to define and customize the frontmatter (YAML metadata) structure for synchronized files, instead of using only the plugin developer's default fields.
