@@ -1,5 +1,8 @@
 # Release Notes
 
+## 0.1.51
+- Remove Debug Messages
+
 ## 0.1.5
 
 - **Enhanced Explorer Integration**: Improved visual indicators and quick access for synced folders
