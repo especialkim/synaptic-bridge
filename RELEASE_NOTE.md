@@ -1,5 +1,16 @@
 # Release Notes
 
+## 0.1.7
+- **Bug fix**: Fixed path conversion bug when folder name matches filename
+  - Previously, if internal folder name (e.g., `test`) was contained in filename (e.g., `test3.md`), the file would be incorrectly renamed to `3.md`
+  - Fixed `getRelativePath()` to properly check directory prefix before replacing
+  - Applied fix across SyncService, SnapShotService, and SyncInternalManager
+  - Added file existence check in `isFrontmatterValid()` to prevent ENOENT errors
+
+## 0.1.6
+- Version bump and license update
+- Added author contact link (Twitter) to LICENSE file
+
 ## 0.1.51
 - Remove Debug Messages
 

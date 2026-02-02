@@ -19,11 +19,21 @@ const globalSyncCache = new Map<string, {
 
 // 파일의 전체 경로(내부 또는 외부)로부터 캐시 키 생성
 function getCacheKey(path: string, connection: FolderConnectionSettings): string {
-    const isInternalPath = path.startsWith(connection.internalPath);
-    const relativePath = isInternalPath 
-        ? path.replace(connection.internalPath, '') 
-        : path.replace(connection.externalPath, '');
-    
+    let relativePath: string;
+
+    // 외부 절대 경로인 경우
+    if (path.startsWith(connection.externalPath)) {
+        relativePath = path.replace(connection.externalPath, '');
+    }
+    // 내부 상대 경로인 경우 (폴더 경로로 정확히 시작하는지 체크)
+    else if (path.startsWith(connection.internalPath + '/')) {
+        relativePath = path.slice(connection.internalPath.length);
+    }
+    // 이미 상대 경로인 경우
+    else {
+        relativePath = path;
+    }
+
     // 상대 경로 기반 고유 키 생성
     return `${connection.id}:${relativePath}`;
 }

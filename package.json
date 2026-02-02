@@ -1,6 +1,6 @@
 {
 	"name": "synaptic-bridge",
-	"version": "0.1.6",
+	"version": "0.1.7",
 	"description": "Hijack your markdowns from external folders. Live sync with Obsidian Vault—on your terms.",
 	"main": "main.js",
 	"scripts": {

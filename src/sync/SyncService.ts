@@ -44,7 +44,7 @@ export class SyncService {
     }
 
     public async syncFileToExternal(path: string, connection: FolderConnectionSettings): Promise<void> {
-        const relativePath = path.replace(connection.internalPath, '');
+        const relativePath = this.getRelativePath(path, connection);
         const externalFilePath = this.getExternalPath(relativePath, connection);
         const internalAbsolutePath = this.getInternalAbsolutePath(relativePath, connection);
 
@@ -120,9 +120,16 @@ export class SyncService {
     }
 
     public getRelativePath(path: string, connection: FolderConnectionSettings): string {
-        return path
-            .replace(connection.externalPath, '')
-            .replace(connection.internalPath, '')
+        // 외부 절대 경로인 경우
+        if (path.startsWith(connection.externalPath)) {
+            return path.replace(connection.externalPath, '');
+        }
+        // 내부 상대 경로인 경우 (폴더 경로로 정확히 시작하는지 체크)
+        if (path.startsWith(connection.internalPath + '/')) {
+            return path.slice(connection.internalPath.length);
+        }
+        // 이미 상대 경로인 경우 그대로 반환
+        return path;
     }
 
     public getInternalPath(path: string, connection: FolderConnectionSettings): string {
@@ -315,6 +322,12 @@ export class SyncService {
         if(path.includes(connection.internalPath)){
             path = this.getInternalAbsolutePath(path, connection);
         }
+
+        // 파일이 존재하지 않으면 유효하지 않음
+        if (!fsSync.existsSync(path)) {
+            return false;
+        }
+
         const { data: existFrontmatterRaw } = this.readFrontmatterAndContent(path);
         const existFrontmatter = existFrontmatterRaw as Record<string, any>;
         for (const key of Object.keys(toUpdateFrontmatterData)) {

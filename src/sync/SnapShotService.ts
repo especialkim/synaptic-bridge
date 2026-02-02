@@ -33,7 +33,20 @@ export class SnapShotService {
         this.app = app;
         this.plugin = plugin;
     }
-    
+
+    private getRelativePath(path: string, connection: FolderConnectionSettings): string {
+        // 외부 절대 경로인 경우
+        if (path.startsWith(connection.externalPath)) {
+            return path.replace(connection.externalPath, '');
+        }
+        // 내부 상대 경로인 경우 (폴더 경로로 정확히 시작하는지 체크)
+        if (path.startsWith(connection.internalPath + '/')) {
+            return path.slice(connection.internalPath.length);
+        }
+        // 이미 상대 경로인 경우 그대로 반환
+        return path;
+    }
+
     public saveSnapshot(
         snapshot: Snapshot,
         connection: FolderConnectionSettings
@@ -96,7 +109,7 @@ export class SnapShotService {
     }
     
     public generateSnapshotData(connection: FolderConnectionSettings, path: string, isUnlinked: boolean = false): SnapshotFile {
-        const relativePath = path.replace(connection.externalPath, '').replace(connection.internalPath, '');
+        const relativePath = this.getRelativePath(path, connection);
         const internalFileSystemPath = (this.app.vault.adapter as FileSystemAdapter).getBasePath() + '/' + connection.internalPath + '/' + relativePath;
         const internalModified = fs.statSync(internalFileSystemPath).mtime.getTime();
     
@@ -111,7 +124,7 @@ export class SnapShotService {
     }
 
     public getCurrentStateSnapshot(connection: FolderConnectionSettings, path: string): SnapshotFile {
-        const relativePath = path.replace(connection.externalPath, '').replace(connection.internalPath, '');
+        const relativePath = this.getRelativePath(path, connection);
         const internalFileSystemPath = (this.app.vault.adapter as FileSystemAdapter).getBasePath() + '/' + connection.internalPath + '/' + relativePath;
         const fileExists = fs.existsSync(path);
         const internalExists = fs.existsSync(internalFileSystemPath);
@@ -178,9 +191,7 @@ export class SnapShotService {
 
     public async removeSnapShots(connection: FolderConnectionSettings, paths: string[]){
         paths.forEach(path => {
-            const relativePath = path
-                .replace(connection.externalPath, '')
-                .replace(connection.internalPath, '');
+            const relativePath = this.getRelativePath(path, connection);
             this.deleteSnapShot(connection, relativePath);
         });
     }
