@@ -7,6 +7,7 @@ import * as fsSync from 'fs';
 import { getVaultName } from "./utils";
 import matter from "gray-matter";
 import { Frontmatter } from "./types/frontmatter";
+import { normalizePath, pathStartsWith, getRelativePathFromBase } from "src/utils/pathUtils";
 
 export class SyncService {
     private app: App;
@@ -18,7 +19,7 @@ export class SyncService {
     }
     
     public async syncFileToInternal(path: string, connection: FolderConnectionSettings): Promise<void> {
-        const relativePath = path.replace(connection.externalPath, '');
+        const relativePath = this.getRelativePath(path, connection);
         const internalFilePath = this.getInternalPath(relativePath, connection);
 
         // 타입 단언을 사용하여 컴파일러 경고 해결
@@ -120,16 +121,18 @@ export class SyncService {
     }
 
     public getRelativePath(path: string, connection: FolderConnectionSettings): string {
-        // 외부 절대 경로인 경우
-        if (path.startsWith(connection.externalPath)) {
-            return path.replace(connection.externalPath, '');
+        const normalizedPath = normalizePath(path);
+
+        // 외부 절대 경로인 경우 (Windows 대소문자 무시)
+        if (pathStartsWith(path, connection.externalPath)) {
+            return getRelativePathFromBase(path, connection.externalPath);
         }
         // 내부 상대 경로인 경우 (폴더 경로로 정확히 시작하는지 체크)
-        if (path.startsWith(connection.internalPath + '/')) {
-            return path.slice(connection.internalPath.length);
+        if (pathStartsWith(path, connection.internalPath + '/')) {
+            return getRelativePathFromBase(path, connection.internalPath);
         }
-        // 이미 상대 경로인 경우 그대로 반환
-        return path;
+        // 이미 상대 경로인 경우 정규화해서 반환
+        return normalizedPath;
     }
 
     public getInternalPath(path: string, connection: FolderConnectionSettings): string {
@@ -319,7 +322,8 @@ export class SyncService {
 
     public isFrontmatterValid(path: string, connection: FolderConnectionSettings): boolean {
         const toUpdateFrontmatterData = this.generateFrontmatter(path, connection, false) as Record<string, any>;
-        if(path.includes(connection.internalPath)){
+        // 내부 경로인지 확인 (includes 대신 pathStartsWith 사용하여 오탐 방지)
+        if (pathStartsWith(path, connection.internalPath + '/') || path.startsWith(connection.internalPath + '/')) {
             path = this.getInternalAbsolutePath(path, connection);
         }
 

@@ -169,16 +169,23 @@ export class ExternalWatcher{
         console.log(`[ExternalWatcher] ========== stopWatching START ==========`);
         console.log(`[ExternalWatcher] Current watchers count: ${this.watchers.length}`);
         const stopStart = performance.now();
-        
+
         const count = this.watchers.length;
-        
-        // 배열만 비우고 watcher.close()는 절대 호출하지 않음!
-        // close()는 어떤 방식으로든 시간이 걸림 (동기든 비동기든)
-        // Node.js의 GC가 자동으로 파일 디스크립터를 정리함
+
+        // 각 watcher를 명시적으로 close해야 함
+        // GC는 활성 watcher를 정리하지 않음 (이벤트 리스너가 참조를 유지)
+        this.watchers.forEach((watcher, index) => {
+            try {
+                watcher.close();
+                console.log(`[ExternalWatcher] ✓ Watcher ${index + 1}/${count} closed`);
+            } catch (error) {
+                console.error(`[ExternalWatcher] ✗ Failed to close watcher ${index + 1}/${count}:`, error);
+            }
+        });
         this.watchers = [];
-        
+
         const totalTime = (performance.now() - stopStart).toFixed(2);
-        console.log(`[ExternalWatcher] ✓ ${count} watchers detached in ${totalTime}ms (GC will cleanup)`);
+        console.log(`[ExternalWatcher] ✓ ${count} watchers closed in ${totalTime}ms`);
         console.log(`[ExternalWatcher] ========== stopWatching END ==========`);
     }
 
