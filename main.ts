@@ -168,37 +168,44 @@ export default class MarkdownHijacker extends Plugin {
 	}
 
 	private async initializeSync() {
-		if (!this.settings.enableGlobalSync) {
-			console.log('[MarkdownHijacker] Global sync disabled, skipping initialization');
-			return;
-		}
-		
 		console.log('[MarkdownHijacker] Starting sync initialization...');
 		const startTime = performance.now();
-		
-		// Status Bar 피드백: 초기화 시작
-		console.log('[MarkdownHijacker] Setting status bar: Initializing...');
-		this.statusBar?.setText("🔄 Initializing sync...");
-		
+
 		try {
-			console.log('[MarkdownHijacker] Creating ExternalWatcher...');
-			this.externalWatcher = new ExternalWatcher(this.app, this);
-			
+			// Watcher 인스턴스는 항상 생성 (Global Sync OFF여도)
+			// 나중에 Settings UI에서 Global Sync ON 시 사용하기 위함
+			if (!this.externalWatcher) {
+				console.log('[MarkdownHijacker] Creating ExternalWatcher...');
+				this.externalWatcher = new ExternalWatcher(this.app, this);
+			}
+
+			if (!this.internalWatcher) {
+				console.log('[MarkdownHijacker] Creating InternalWatcher...');
+				this.internalWatcher = new InternalWatcher(this.app, this);
+			}
+
+			// Global Sync가 꺼져있으면 watcher 설정만 건너뜀
+			if (!this.settings.enableGlobalSync) {
+				console.log('[MarkdownHijacker] Global sync disabled, skipping watcher setup');
+				return;
+			}
+
+			// Status Bar 피드백: 초기화 시작
+			console.log('[MarkdownHijacker] Setting status bar: Initializing...');
+			this.statusBar?.setText("🔄 Initializing sync...");
+
 			console.log('[MarkdownHijacker] Setting up ExternalWatcher...');
 			this.externalWatcher.setupWatcher();
 			console.log('[MarkdownHijacker] ExternalWatcher setup complete');
-			
-			console.log('[MarkdownHijacker] Creating InternalWatcher...');
-			this.internalWatcher = new InternalWatcher(this.app, this);
-			
+
 			console.log('[MarkdownHijacker] Setting up InternalWatcher...');
 			this.internalWatcher.setupWatcher();
 			console.log('[MarkdownHijacker] InternalWatcher setup complete');
-			
+
 			const endTime = performance.now();
 			const duration = (endTime - startTime).toFixed(2);
 			console.log(`[MarkdownHijacker] Sync initialization completed in ${duration}ms`);
-			
+
 			// Status Bar 피드백: 초기화 완료
 			console.log('[MarkdownHijacker] Setting status bar: Sync ready');
 			this.statusBar?.setText("✅ Sync ready");
