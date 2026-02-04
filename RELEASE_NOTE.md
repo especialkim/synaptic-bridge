@@ -1,5 +1,18 @@
 # Release Notes
 
+## 0.1.8
+- **Windows compatibility**: Fixed sync not working on Windows due to path handling issues
+  - Added path normalization utilities to handle backslash (`\`) vs forward slash (`/`) differences
+  - Added case-insensitive path comparison for Windows file system
+  - Fixed `getRelativePath()` to properly normalize paths before comparison
+  - Fixed `isFrontmatterValid()` to use `pathStartsWith()` instead of `includes()` to prevent false matches
+- **Bug fix**: Fixed file watchers not properly stopping when disabling sync
+  - Watchers now call `close()` explicitly instead of relying on garbage collection
+  - Prevents external file frontmatter from being continuously updated after sync is disabled
+- **Bug fix**: Fixed Global Sync toggle not working on first enable after plugin load
+  - Watcher instances are now created on plugin load regardless of Global Sync state
+  - Enabling Global Sync from settings now immediately starts synchronization
+
 ## 0.1.7
 - **Bug fix**: Fixed path conversion bug when folder name matches filename
   - Previously, if internal folder name (e.g., `test`) was contained in filename (e.g., `test3.md`), the file would be incorrectly renamed to `3.md`
