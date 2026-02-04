@@ -5,7 +5,7 @@ import * as fs from "fs";
 import * as pathModule from "path";
 import chokidar, { FSWatcher } from 'chokidar';
 import { getAllWatchedPaths, ignoreFilter } from "src/watchers/utils";
-import { getPluginDataPath } from "src/utils/pathUtils";
+import { getPluginDataPath, normalizePath, pathStartsWith, getRelativePathFromBase } from "src/utils/pathUtils";
 
 export type SnapshotFile = {
     externalRootPath: string;
@@ -35,16 +35,18 @@ export class SnapShotService {
     }
 
     private getRelativePath(path: string, connection: FolderConnectionSettings): string {
-        // 외부 절대 경로인 경우
-        if (path.startsWith(connection.externalPath)) {
-            return path.replace(connection.externalPath, '');
+        const normalizedPath = normalizePath(path);
+
+        // 외부 절대 경로인 경우 (Windows 대소문자 무시)
+        if (pathStartsWith(path, connection.externalPath)) {
+            return getRelativePathFromBase(path, connection.externalPath);
         }
         // 내부 상대 경로인 경우 (폴더 경로로 정확히 시작하는지 체크)
-        if (path.startsWith(connection.internalPath + '/')) {
-            return path.slice(connection.internalPath.length);
+        if (pathStartsWith(path, connection.internalPath + '/')) {
+            return getRelativePathFromBase(path, connection.internalPath);
         }
-        // 이미 상대 경로인 경우 그대로 반환
-        return path;
+        // 이미 상대 경로인 경우 정규화해서 반환
+        return normalizedPath;
     }
 
     public saveSnapshot(
