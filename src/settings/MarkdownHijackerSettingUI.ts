@@ -1,9 +1,10 @@
 import MarkdownHijacker from "../../main";
 import { App, Notice, PluginSettingTab, setIcon, Setting, ToggleComponent } from "obsidian";
-import { BidirectionalType, DeletedFileAction, FolderConnectionSettings, MarkdownHijackerSettings, SyncType } from "./types";
+import { BidirectionalType, DeletedFileAction, FolderConnectionSettings, FrontmatterPolicy, MarkdownHijackerSettings, SyncType } from "./types";
 import { openFolderSelectionDialog } from "../utils/openFolderSelectionDialog";
 import { openVaultFolderSelectionDialog } from "src/utils/openVaultFolderSelectionDialog";
 import { RemoveConnectionModal } from "./modal";
+import { FrontmatterPolicyChangeModal } from "./FrontmatterPolicyChangeModal";
 import { disableSync, saveSettings, validateConnectionPaths } from "./utils";
 import { FolderSuggest } from "src/suggest/FolderSuggest";
 
@@ -56,6 +57,7 @@ export const DEFAULT_CONNECTIONS : FolderConnectionSettings = {
 	extensions: ['md'],
 	includeFileNames: [],
 	excludeFileNames: [],
+	frontmatterPolicy: FrontmatterPolicy.internalOnly,
 	syncEnabled: false
 }
 
@@ -315,6 +317,30 @@ export class MarkdownHijackerSettingUI extends PluginSettingTab {
 						const directionEl = itemHeaderLeft.querySelector('.sync-connection-direction');
 						if (directionEl) {
 							directionEl.textContent = connection.syncType;
+						}
+					}));
+
+			new Setting(advancedContent)
+				.setName('Frontmatter policy')
+				.setDesc('Controls where bridge metadata is written. Internal Only keeps external files clean.')
+				.addDropdown(dropdown => dropdown
+					.addOption(FrontmatterPolicy.both, 'Both (internal & external)')
+					.addOption(FrontmatterPolicy.internalOnly, 'Internal Only')
+					.addOption(FrontmatterPolicy.none, 'None')
+					.setValue(connection.frontmatterPolicy)
+					.onChange(async (value) => {
+						const oldPolicy = connection.frontmatterPolicy;
+						const newPolicy = value as FrontmatterPolicy;
+						if (oldPolicy !== newPolicy) {
+							const modal = new FrontmatterPolicyChangeModal(
+								this.app,
+								this.plugin,
+								connection,
+								oldPolicy,
+								newPolicy,
+								dropdown
+							);
+							modal.open();
 						}
 					}));
 

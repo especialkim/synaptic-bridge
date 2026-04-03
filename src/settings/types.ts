@@ -15,6 +15,12 @@ export enum DeletedFileAction {
 	delete = "delete"
 }
 
+export enum FrontmatterPolicy {
+	both = 'both',
+	internalOnly = 'internalOnly',
+	none = 'none'
+}
+
 // 개별 폴더 연결 설정
 export interface FolderConnectionSettings {
 	id: string;                     // 고유 식별자 (UUID 등)
@@ -31,7 +37,8 @@ export interface FolderConnectionSettings {
 	syncEnabled: boolean;           // 이 매핑의 동기화 활성화 여부
 	includeFileNames: string[];     // 포함할 파일 목록 (선택 시 제외 목록 무시)
 	excludeFileNames: string[];     // 제외할 파일 목록 (이름 기준)
-};
+	frontmatterPolicy: FrontmatterPolicy; // frontmatter 쓰기 정책
+}
 
 // 전체 플러그인 설정
 export interface MarkdownHijackerSettings {
@@ -40,4 +47,5 @@ export interface MarkdownHijackerSettings {
 	debugMode: boolean;                  // 디버그 모드 (콘솔 로그 출력용)
 	showStatusBar: boolean;              // 상태 바 표시 여부
 	connections: FolderConnectionSettings[];         // 폴더 동기화 매핑 목록
-}; 
+	_lastFrontmatterPolicies?: Record<string, string>; // startup cleanup 감지용
+}

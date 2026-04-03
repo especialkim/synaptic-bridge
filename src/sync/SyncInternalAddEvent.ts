@@ -1,6 +1,6 @@
 import MarkdownHijacker from "main";
 import { App } from "obsidian";
-import { FolderConnectionSettings } from "src/settings/types";
+import { FolderConnectionSettings, FrontmatterPolicy } from "src/settings/types";
 import { SyncService } from "./SyncService";
 import * as fs from 'fs/promises';
 import * as pathModule from 'path';
@@ -21,10 +21,19 @@ export class SyncInternalAddEvent {
     }
 
     public async handleUserAddMdBlank(path: string, connection: FolderConnectionSettings){
+        const policy = connection.frontmatterPolicy;
+        const relativePath = this.plugin.syncService.getRelativePath(path, connection);
 
         try {
-            const frontmatter = this.plugin.syncService.generateFrontmatter(path, connection);
-            await this.plugin.syncService.updateInternalFileFrontmatter(path, frontmatter, connection);
+            // 출발지(내부) FM 쓰기: both 또는 internalOnly일 때
+            if (policy === FrontmatterPolicy.both || policy === FrontmatterPolicy.internalOnly) {
+                const frontmatter = this.plugin.syncService.generateFrontmatter(path, connection);
+                await this.plugin.syncService.updateInternalFileFrontmatter(path, frontmatter, connection);
+                this.plugin.syncService.suppressWrite(connection.id, 'internal', relativePath);
+            }
+
+            // sync 호출 — 도착지(외부) FM은 syncFileToExternal 내부에서 처리
+            await this.plugin.syncService.syncFileToExternal(path, connection);
         } catch (error) {
             console.error(`Error generating frontmatter: ${error}`);
             return;
@@ -32,10 +41,19 @@ export class SyncInternalAddEvent {
     }
 
     public async handleUserAddMdContent(path: string, connection: FolderConnectionSettings){
+        const policy = connection.frontmatterPolicy;
+        const relativePath = this.plugin.syncService.getRelativePath(path, connection);
 
         try {
-            const frontmatter = this.plugin.syncService.generateFrontmatter(path, connection);
-            await this.plugin.syncService.updateInternalFileFrontmatter(path, frontmatter, connection);
+            // 출발지(내부) FM 쓰기: both 또는 internalOnly일 때
+            if (policy === FrontmatterPolicy.both || policy === FrontmatterPolicy.internalOnly) {
+                const frontmatter = this.plugin.syncService.generateFrontmatter(path, connection);
+                await this.plugin.syncService.updateInternalFileFrontmatter(path, frontmatter, connection);
+                this.plugin.syncService.suppressWrite(connection.id, 'internal', relativePath);
+            }
+
+            // sync 호출 — 도착지(외부) FM은 syncFileToExternal 내부에서 처리
+            await this.plugin.syncService.syncFileToExternal(path, connection);
         } catch (error) {
             console.error(`Error generating frontmatter: ${error}`);
             return;
@@ -68,7 +86,7 @@ export class SyncInternalAddEvent {
             }
         }
     }
-    
+
     private isNodeError(error: unknown): error is NodeJS.ErrnoException {
         return typeof error === 'object' && error !== null && 'code' in error;
     }

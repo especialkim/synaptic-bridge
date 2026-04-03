@@ -1,5 +1,17 @@
 # Release Notes
 
+## 0.1.9
+- **Frontmatter Policy**: Added per-connection `frontmatterPolicy` setting to control where bridge metadata is written
+  - `Both`: Write frontmatter to both internal and external files (previous default behavior)
+  - `Internal Only`: Write frontmatter only to internal (Vault) files, keeping external files clean
+  - `None`: No frontmatter on either side — pure file sync without metadata injection
+  - New connections default to `Internal Only`; existing connections preserve `Both` for backward compatibility
+- **Automatic cleanup on policy change**: When changing the frontmatter policy via Settings UI, a confirmation dialog triggers automatic strip/insertion of bridge frontmatter across all synced files
+- **Startup policy migration**: If `frontmatterPolicy` is changed via `data.json` (e.g., for testing), cleanup runs automatically on next plugin load
+- **Sync loop prevention**: Added directional suppress set (`connection::direction::relativePath`) to prevent duplicate sync and watcher loops when writing frontmatter or stripping during `internal-only` sync
+- **Bug fix**: Fixed Add flow relying on frontmatter write side-effect to trigger Change event for actual sync — now calls `syncFileToInternal`/`syncFileToExternal` explicitly
+- **Bug fix**: Fixed `readFrontmatterAndContent` returning raw file content instead of parsed body, which could cause double frontmatter blocks
+
 ## 0.1.8
 - **Windows compatibility**: Fixed sync not working on Windows due to path handling issues
   - Added path normalization utilities to handle backslash (`\`) vs forward slash (`/`) differences

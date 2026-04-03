@@ -1,6 +1,6 @@
 import MarkdownHijacker from "main";
-import { App, FileSystemAdapter } from "obsidian";
-import { FolderConnectionSettings } from "src/settings/types";
+import { App, FileSystemAdapter, TFile, TFolder } from "obsidian";
+import { FolderConnectionSettings, FrontmatterPolicy } from "src/settings/types";
 import * as pathModule from 'path';
 import * as fs from 'fs/promises';
 import * as fsSync from 'fs';
@@ -12,12 +12,26 @@ import { normalizePath, pathStartsWith, getRelativePathFromBase } from "src/util
 export class SyncService {
     private app: App;
     private plugin: MarkdownHijacker;
+    private writeSuppressSet: Set<string> = new Set();
 
     constructor(app: App, plugin: MarkdownHijacker){
         this.app = app;
         this.plugin = plugin;
     }
-    
+
+    public suppressWrite(connectionId: string, direction: 'external' | 'internal', relativePath: string): void {
+        this.writeSuppressSet.add(`${connectionId}::${direction}::${relativePath}`);
+    }
+
+    public isWriteSuppressed(connectionId: string, direction: 'external' | 'internal', relativePath: string): boolean {
+        const key = `${connectionId}::${direction}::${relativePath}`;
+        if (this.writeSuppressSet.has(key)) {
+            this.writeSuppressSet.delete(key);
+            return true;
+        }
+        return false;
+    }
+
     public async syncFileToInternal(path: string, connection: FolderConnectionSettings): Promise<void> {
         const relativePath = this.getRelativePath(path, connection);
         const internalFilePath = this.getInternalPath(relativePath, connection);
@@ -28,6 +42,13 @@ export class SyncService {
         try {
             await this.ensureParentFolderExistsInObsidian(internalFilePath);
             fsSync.copyFileSync(path, internalAbsolutePath);
+
+            // policy가 internalOnly이고 md 파일이면 bridge FM reapply
+            if (connection.frontmatterPolicy === FrontmatterPolicy.internalOnly && path.endsWith('.md')) {
+                const frontmatter = this.generateFrontmatter(relativePath, connection);
+                await this.updateExternalFileFrontmatter(internalAbsolutePath, frontmatter, connection);
+                this.suppressWrite(connection.id, 'internal', relativePath);
+            }
 
             const internalFileMtime = fsSync.statSync(internalAbsolutePath).mtime.getTime();
             fsSync.utimesSync(path, new Date(), new Date(internalFileMtime));
@@ -52,8 +73,16 @@ export class SyncService {
         try {
             await this.ensureParentFolderExistsInExternal(externalFilePath);
 
-            // 내부 파일을 외부 파일로 복사
-            fsSync.copyFileSync(internalAbsolutePath, externalFilePath);
+            // policy가 internalOnly이고 md 파일이면 bridge FM을 strip해서 외부에 write
+            if (connection.frontmatterPolicy === FrontmatterPolicy.internalOnly && path.endsWith('.md')) {
+                const internalContent = fsSync.readFileSync(internalAbsolutePath, 'utf8');
+                const strippedContent = this.stripBridgeFrontmatter(internalContent);
+                fsSync.writeFileSync(externalFilePath, strippedContent);
+                this.suppressWrite(connection.id, 'external', relativePath);
+            } else {
+                // 기존: 내부 파일을 외부 파일로 복사
+                fsSync.copyFileSync(internalAbsolutePath, externalFilePath);
+            }
 
             // 내부 파일의 mtime을 외부 파일에 동기화
             const internalFileMtime = fsSync.statSync(internalAbsolutePath).mtime;
@@ -186,10 +215,21 @@ export class SyncService {
             const newRelativeBase = relativeBase.startsWith('❌ ') ? relativeBase : `❌ ${relativeBase}`;
             newRelativePath = relativeDir === '.' ? newRelativeBase : pathModule.join(relativeDir, newRelativeBase);
     
-            // frontmatter 업데이트 (마크다운 파일인 경우만)
+            // frontmatter 업데이트 (마크다운 파일인 경우만, 정책에 따라 gate)
             if (isMarkdown) {
-                const frontmatter = this.generateFrontmatter(newRelativePath, connection, true);
-                await this.updateExternalFileFrontmatter(newTargetPath, frontmatter, connection);
+                const policy = connection.frontmatterPolicy;
+                // targetPath가 internal인지 external인지 판별
+                const basePath = (this.app.vault.adapter as FileSystemAdapter).getBasePath();
+                const internalRoot = `${basePath}/${connection.internalPath}`;
+                const isInternal = pathStartsWith(targetPath, internalRoot);
+                const shouldWriteFm = isInternal
+                    ? (policy === FrontmatterPolicy.both || policy === FrontmatterPolicy.internalOnly)
+                    : (policy === FrontmatterPolicy.both);
+
+                if (shouldWriteFm) {
+                    const frontmatter = this.generateFrontmatter(newRelativePath, connection, true);
+                    await this.updateExternalFileFrontmatter(newTargetPath, frontmatter, connection);
+                }
             }
         }
         this.plugin.snapShotService.deleteSnapShot(connection, relativePath);
@@ -347,6 +387,91 @@ export class SyncService {
         return true;
     }
 
+    public stripBridgeFrontmatter(content: string): string {
+        const BRIDGE_KEYS = [
+            'externalRoot', 'internalRoot', 'relativePath',
+            'internalLink', 'externalLink', 'isUnlinked',
+            'syncType', 'bidirectionalType', 'deletedFileAction'
+        ];
+
+        const parsed = matter(content);
+        const data = { ...parsed.data };
+        let hadBridgeKey = false;
+
+        for (const key of BRIDGE_KEYS) {
+            if (key in data) {
+                delete data[key];
+                hadBridgeKey = true;
+            }
+        }
+
+        if (!hadBridgeKey) return content;
+
+        // 남은 키가 없으면 frontmatter 블록 자체 제거
+        if (Object.keys(data).length === 0) {
+            return parsed.content.startsWith('\n') ? parsed.content.substring(1) : parsed.content;
+        }
+
+        return matter.stringify(parsed.content, data);
+    }
+
+    public async cleanupFrontmatterForPolicyChange(
+        connection: FolderConnectionSettings,
+        oldPolicy: FrontmatterPolicy,
+        newPolicy: FrontmatterPolicy
+    ): Promise<void> {
+        const basePath = (this.app.vault.adapter as FileSystemAdapter).getBasePath();
+        const targetRelativePaths = this.collectCleanupTargetRelativePaths(connection);
+        const shouldWriteInternal = newPolicy === FrontmatterPolicy.both || newPolicy === FrontmatterPolicy.internalOnly;
+        const shouldWriteExternal = newPolicy === FrontmatterPolicy.both;
+        const failedPaths: string[] = [];
+
+        for (const relativePath of targetRelativePaths) {
+            const cleanRelativePath = relativePath.startsWith('/') ? relativePath.substring(1) : relativePath;
+            const internalAbsolutePath = `${basePath}/${connection.internalPath}/${cleanRelativePath}`;
+            const externalAbsolutePath = `${connection.externalPath}/${cleanRelativePath}`;
+
+            try {
+                const internalExists = fsSync.existsSync(internalAbsolutePath);
+                const externalExists = fsSync.existsSync(externalAbsolutePath);
+                const isUnlinked = !(internalExists && externalExists);
+
+                if (internalExists) {
+                    if (shouldWriteInternal) {
+                        const frontmatter = this.generateFrontmatter(relativePath, connection, isUnlinked);
+                        this.updateFileFrontmatterPreservingMtime(internalAbsolutePath, frontmatter);
+                    } else {
+                        const content = fsSync.readFileSync(internalAbsolutePath, 'utf8');
+                        const stripped = this.stripBridgeFrontmatter(content);
+                        if (content !== stripped) {
+                            this.writeFilePreservingMtime(internalAbsolutePath, stripped);
+                        }
+                    }
+                }
+
+                if (externalExists) {
+                    if (shouldWriteExternal) {
+                        const frontmatter = this.generateFrontmatter(relativePath, connection, isUnlinked);
+                        this.updateFileFrontmatterPreservingMtime(externalAbsolutePath, frontmatter);
+                    } else {
+                        const content = fsSync.readFileSync(externalAbsolutePath, 'utf8');
+                        const stripped = this.stripBridgeFrontmatter(content);
+                        if (content !== stripped) {
+                            this.writeFilePreservingMtime(externalAbsolutePath, stripped);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error(`[SyncService: cleanupFrontmatter] Error processing ${relativePath}:`, error);
+                failedPaths.push(relativePath);
+            }
+        }
+
+        if (failedPaths.length > 0) {
+            throw new Error(`Frontmatter cleanup failed for ${failedPaths.length} file(s): ${failedPaths.join(', ')}`);
+        }
+    }
+
     public async isSameFile(internalFilePath: string, externalFilePath: string) {
         if (!fsSync.existsSync(internalFilePath) || !fsSync.existsSync(externalFilePath)) {
             return false;
@@ -357,6 +482,204 @@ export class SyncService {
     }
 
     /* Private Method */
+
+    private normalizeCleanupRelativePath(relativePath: string): string {
+        const normalized = normalizePath(relativePath || '');
+        if (!normalized) {
+            return '/';
+        }
+
+        return normalized.startsWith('/') ? normalized : `/${normalized}`;
+    }
+
+    private matchCleanupPattern(filename: string, pattern: string): boolean {
+        if (pattern.includes('*') || pattern.includes('?') || pattern.includes('[')) {
+            const regexPattern = pattern
+                .replace(/\./g, '\\.')
+                .replace(/\*/g, '.*')
+                .replace(/\?/g, '.')
+                .replace(/\[([^\]]+)\]/g, '[$1]');
+
+            return new RegExp(`^${regexPattern}$`, 'i').test(filename);
+        }
+
+        return filename.toLowerCase() === pattern.toLowerCase();
+    }
+
+    private getCleanupCandidateFileNames(filename: string): string[] {
+        const stripped = filename.replace(/^❌\s*/, '');
+        return Array.from(new Set([filename, stripped].filter(Boolean)));
+    }
+
+    private shouldSkipCleanupRelativePath(
+        relativePath: string,
+        connection: FolderConnectionSettings,
+        isFile: boolean
+    ): boolean {
+        const normalized = this.normalizeCleanupRelativePath(relativePath).replace(/^\/+/, '');
+        if (!normalized) {
+            return false;
+        }
+
+        const parts = normalized.split('/').filter(Boolean).map(part => part.toLowerCase());
+        const loweredExcludes = connection.excludeFolders.map(folder => folder.toLowerCase());
+        const loweredIncludes = connection.includeFolders.map(folder => folder.toLowerCase());
+
+        if (connection.ignoreHiddenFiles && parts.some(part => part.startsWith('.'))) {
+            return true;
+        }
+
+        if (loweredExcludes.length > 0 && parts.some(part => loweredExcludes.includes(part))) {
+            return true;
+        }
+
+        if (loweredIncludes.length > 0) {
+            const allowed = parts.slice(0, 2);
+            if (!allowed.some(part => loweredIncludes.includes(part))) {
+                return true;
+            }
+        }
+
+        if (!isFile) {
+            return false;
+        }
+
+        const loweredExtensions = connection.extensions.map(ext => ext.replace(/^\./, '').toLowerCase());
+        const filename = parts[parts.length - 1] || '';
+        if (loweredExtensions.length > 0 && !loweredExtensions.some(ext => filename.endsWith(`.${ext}`))) {
+            return true;
+        }
+        if (!filename.endsWith('.md')) {
+            return true;
+        }
+
+        const candidateNames = this.getCleanupCandidateFileNames(filename);
+        const includePatterns = connection.includeFileNames || [];
+        const excludePatterns = connection.excludeFileNames || [];
+
+        if (includePatterns.length > 0) {
+            const matchesInclude = includePatterns.some(pattern =>
+                candidateNames.some(candidate => this.matchCleanupPattern(candidate, pattern))
+            );
+            if (!matchesInclude) {
+                return true;
+            }
+        }
+
+        if (excludePatterns.length > 0) {
+            const matchesExclude = excludePatterns.some(pattern =>
+                candidateNames.some(candidate => this.matchCleanupPattern(candidate, pattern))
+            );
+            if (matchesExclude) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private collectInternalCleanupRelativePaths(connection: FolderConnectionSettings): string[] {
+        const internalRoot = this.app.vault.getFolderByPath(connection.internalPath);
+        if (!internalRoot) {
+            return [];
+        }
+
+        const collected = new Set<string>();
+        const visit = (folder: TFolder) => {
+            for (const child of folder.children) {
+                const relativePath = this.normalizeCleanupRelativePath(this.getRelativePath(child.path, connection));
+
+                if (child instanceof TFolder) {
+                    if (this.shouldSkipCleanupRelativePath(relativePath, connection, false)) {
+                        continue;
+                    }
+                    visit(child);
+                    continue;
+                }
+
+                if (!(child instanceof TFile)) {
+                    continue;
+                }
+
+                if (!this.shouldSkipCleanupRelativePath(relativePath, connection, true)) {
+                    collected.add(relativePath);
+                }
+            }
+        };
+
+        visit(internalRoot);
+        return [...collected];
+    }
+
+    private collectExternalCleanupRelativePaths(connection: FolderConnectionSettings): string[] {
+        const collected = new Set<string>();
+
+        const visit = (dirPath: string) => {
+            if (!fsSync.existsSync(dirPath)) {
+                return;
+            }
+
+            for (const entry of fsSync.readdirSync(dirPath, { withFileTypes: true })) {
+                const fullPath = pathModule.join(dirPath, entry.name);
+                const relativePath = this.normalizeCleanupRelativePath(this.getRelativePath(fullPath, connection));
+
+                if (entry.isDirectory()) {
+                    if (this.shouldSkipCleanupRelativePath(relativePath, connection, false)) {
+                        continue;
+                    }
+                    visit(fullPath);
+                    continue;
+                }
+
+                if (entry.isFile() && !this.shouldSkipCleanupRelativePath(relativePath, connection, true)) {
+                    collected.add(relativePath);
+                }
+            }
+        };
+
+        visit(connection.externalPath);
+        return [...collected];
+    }
+
+    private collectCleanupTargetRelativePaths(connection: FolderConnectionSettings): string[] {
+        const snapshot = this.plugin.snapShotService.loadSnapshot(connection);
+        const collected = new Set<string>();
+
+        for (const file of [...snapshot.linkedFiles, ...snapshot.unLinkedFiles]) {
+            if (file.relativePath.endsWith('.md')) {
+                collected.add(this.normalizeCleanupRelativePath(file.relativePath));
+            }
+        }
+
+        for (const relativePath of this.collectInternalCleanupRelativePaths(connection)) {
+            collected.add(relativePath);
+        }
+
+        for (const relativePath of this.collectExternalCleanupRelativePaths(connection)) {
+            collected.add(relativePath);
+        }
+
+        return [...collected];
+    }
+
+    private writeFilePreservingMtime(filePath: string, content: string): void {
+        const fileStat = fsSync.statSync(filePath);
+        fsSync.writeFileSync(filePath, content);
+        fsSync.utimesSync(filePath, fileStat.atime, fileStat.mtime);
+    }
+
+    private updateFileFrontmatterPreservingMtime(filePath: string, frontmatter: Record<string, any>): void {
+        const originalContent = fsSync.readFileSync(filePath, 'utf8');
+        const { data, content } = this.readFrontmatterAndContent(filePath);
+        const mergedFrontmatter = { ...data, ...frontmatter };
+        const updatedContent = matter.stringify(content, mergedFrontmatter);
+
+        if (originalContent === updatedContent) {
+            return;
+        }
+
+        this.writeFilePreservingMtime(filePath, updatedContent);
+    }
 
     private async ensureParentFolderExistsInObsidian(obsidianPath: string): Promise<void> {
         const folderPath = obsidianPath.substring(0, obsidianPath.lastIndexOf('/'));
@@ -408,9 +731,9 @@ export class SyncService {
     }
 
     private readFrontmatterAndContent(path: string): { data: any; content: string } {
-        const content = fsSync.readFileSync(path, 'utf8');
-        const { data } = matter(content);
-        return { data, content };
+        const fileContent = fsSync.readFileSync(path, 'utf8');
+        const parsed = matter(fileContent);
+        return { data: parsed.data, content: parsed.content };
     }
 }
 
